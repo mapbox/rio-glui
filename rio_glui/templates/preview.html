@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title></title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.25.1/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.25.1/mapbox-gl.css' rel='stylesheet' />
+    <style>
+        body { margin:0; padding:0; }
+        #map { position:absolute; top:0; bottom:0; width:100%; }
+    </style>
+</head>
+<body>
+
+<div id='map'></div>
+<script>
+
+function getBounds(callback) {
+    var xmlHttp = new XMLHttpRequest();
+    xmlHttp.onreadystatechange = function() { 
+        if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+            callback(xmlHttp.responseText);
+    }
+    xmlHttp.open("GET", '/getbounds', true);
+    xmlHttp.send(null);
+}
+mapboxgl.accessToken = 'pk.eyJ1IjoiZG5vbWFkYiIsImEiOiJjaW16aXFsZzUwNHJmdjdra3h0Nmd2cjY1In0.SqzkaKalXxQaPhQLjodQcQ';
+
+var ctrlnglat = [{{ ctrlng }}, {{ ctrlat }}];
+
+var map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/streets-v9',
+    center: ctrlnglat,
+    zoom: 11,
+    hash: true
+});
+
+getBounds(function(bounds) {
+    map.on('load', function() {
+        bounds = JSON.parse(bounds);
+        map.fitBounds([
+            [bounds[0], bounds[1]],
+            [bounds[2], bounds[3]]
+            ])
+        map.addSource("raster-tiles", {
+            "type": "raster",
+            "tiles": ["tiles/{z}/{x}/{y}.png"],
+            "tileSize": 512
+        });
+
+        map.addLayer({
+            "id": "raster-tiles",
+            "type": "raster",
+            "source": "raster-tiles",
+            "minzoom": 0,
+            "maxzoom": 22,
+            "paint": {"raster-opacity": 0.90}
+        })
+    });
+})
+</script>
+</body>
+</html>
