@@ -6,8 +6,8 @@ import shutil, tempfile, os
 import rasterio as rio
 import numpy as np
 
-from rio_color.operations import parse_operations
-
+from rio_color.operations import parse_operations, gamma, sigmoidal, saturation
+from rio_color.utils import scale_dtype, to_math_type
 
 from io import StringIO, BytesIO
 from rasterio import transform
@@ -125,11 +125,13 @@ def get_image(color, z, x, y):
     if tilearr is None:
         tilearr = pk.get_tile(z, x, y)
 
-    ## Add color formula here!
-    # for op in parse_operations(color):
-    #     <do op>
+    try:
+        for ops in parse_operations(color):
+            color_tilearr = scale_dtype(ops(to_math_type(tilearr)), np.uint8)
+    except ValueError as e:
+        raise click.UsageError(str(e))
 
-    img = Image.fromarray(np.dstack(tilearr))
+    img = Image.fromarray(np.dstack(color_tilearr))
     # put in cache
     fc.add(img, z, x, y)
 
@@ -149,4 +151,4 @@ def set_source():
 def glui(srcpath):
     pk.start(srcpath)
     click.echo('Inspecting {0} at http://127.0.0.1:5000/'.format(srcpath), err=True)
-    app.run()
+    app.run(debug=True, port=12345)
