@@ -8,12 +8,16 @@
     <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.25.1/mapbox-gl.css' rel='stylesheet' />
     <style>
         body { margin:0; padding:0; }
-        #map { position:absolute; top:0; bottom:0; width:100%; }
+        #map { position:absolute; top:0; bottom:150px; width:100%; }
+        #console {position: absolute; bottom: 0px; height: 150px; width: 100%; background-color: black}
     </style>
+    <link href='https://api.mapbox.com/mapbox-assembly/v0.8.1/assembly.min.css' rel='stylesheet'>
+  <script async defer src='https://api.mapbox.com/mapbox-assembly/v0.8.1/assembly.js'></script>
 </head>
 <body>
 
 <div id='map'></div>
+<div id='console'></div>
 <script>
 
 function getBounds(callback) {
