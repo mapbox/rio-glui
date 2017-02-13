@@ -1,5 +1,7 @@
 click
-rasterio
 Pillow
-flask
 mercantile
+cachetools
+rasterio[s3]==1.0a5
+aiohttp
+aiohttp_jinja2

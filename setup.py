@@ -1,7 +1,7 @@
 import os
 import sys
 from setuptools import setup, find_packages
-from setuptools.extension import Extension
+# from setuptools.extension import Extension
 
 # Parse the version from the fiona module.
 with open('rio_glui/__init__.py') as f:
@@ -22,7 +22,9 @@ setup(name='rio-glui',
       version=version,
       description=u"Demo rasterio / Mapbox GL JS demo app",
       long_description=long_description,
-      classifiers=[],
+      classifiers=[
+          'Programming Language :: Python :: 3.6'
+      ],
       keywords='',
       author=u"Damon Burgett",
       author_email='damon@mapbox.com',
@@ -31,7 +33,7 @@ setup(name='rio-glui',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
       include_package_data=True,
       zip_safe=False,
-      install_requires=["click", "rasterio", "Pillow", "flask", "mercantile"],
+      install_requires=read('requirements.txt').splitlines(),
       extras_require={
           'test': ['pytest', 'pytest-cov', 'codecov']},
       entry_points="""

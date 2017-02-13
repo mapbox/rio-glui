@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+	<title>Rasterio (Rio) GL-UI</title>
+	<meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+	<script src='https://api.mapbox.com/mapbox-gl-js/v0.32.1/mapbox-gl.js'></script>
+	<link href='https://api.mapbox.com/mapbox-gl-js/v0.32.1/mapbox-gl.css' rel='stylesheet' />
+
+	<link href="https://api.mapbox.com/mapbox-assembly/v0.6.0/assembly.min.css" rel="stylesheet">
+	<script async defer src="https://api.mapbox.com/mapbox-assembly/v0.6.0/assembly.js"></script>
+
+  <style>
+
+		body {
+		  position: fixed;
+			width: 100%;
+			height: 100%;
+			color: #000;
+			background-color: #FFF;
+		  letter-spacing: 0;
+		}
+
+		.content {
+		    height:100%;
+		    width: 100%;
+		    font-size: 0;
+		}
+
+		.row, .col {
+		    padding: 0;
+		    margin: 0;
+		}
+
+		.map {
+		    position: relative;
+		    height: 100%;
+		    width: 100%;
+		    padding: 0;
+		    margin: 0;
+		    overflow: hidden;
+		    -webkit-touch-callout: none;
+		      -webkit-user-select: none;
+		         -moz-user-select: none;
+		          -ms-user-select: none;
+		              user-select: none;
+		}
+
+	</style>
+</head>
+
+<body>
+	<div class="content">
+			<div id="map" class="map"></div>
+	</div>
+
+	<script>
+
+		mapboxgl.accessToken = 'pk.eyJ1IjoidmluY2VudHNhcmFnbyIsImEiOiJjaXZ2MjlxbWUwMG41MnlwNzNnaGN0a2NmIn0.HxKPljj1_AK5333eBz-YxQ';
+
+		let ctrlnglat = [{{ ctrlng }}, {{ ctrlat }}];
+		let bounds = {{ bounds }};
+
+		var map = new mapboxgl.Map({
+		    container: 'map',
+		    style: 'mapbox://styles/mapbox/streets-v9',
+		    center: ctrlnglat,
+		    zoom: 3,
+				maxzoom: 22,
+		    attributionControl: false
+		});
+
+		map.addControl(new mapboxgl.NavigationControl(), 'top-left');
+		map.addControl(new mapboxgl.AttributionControl({compact: true}), 'bottom-right');
+
+		map.on('load', function () {
+
+				map.fitBounds([
+						[bounds[0], bounds[1]],
+						[bounds[2], bounds[3]]
+				]);
+
+	      map.addSource("raster-tiles", {
+	          "type": "raster",
+	          "tiles": ["http://127.0.0.1:5000/tiles/{z}/{x}/{y}.png"],
+	          "tileSize": 256
+	      });
+
+	      map.addLayer({
+	          "id": "raster-tiles",
+	          "type": "raster",
+	          "source": "raster-tiles",
+						// "minzoom": 9,
+						// "maxzoom": 13,
+	          "paint": {"raster-opacity": 0.90}
+	      })
+		});
+	</script>
+
+</body>
+</html>
