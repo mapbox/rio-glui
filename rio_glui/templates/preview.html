@@ -33,8 +33,6 @@ function getBounds(callback) {
     xmlHttp.send(null);
 }
 
-
-
 mapboxgl.accessToken = 'pk.eyJ1IjoiZG5vbWFkYiIsImEiOiJjaW16aXFsZzUwNHJmdjdra3h0Nmd2cjY1In0.SqzkaKalXxQaPhQLjodQcQ';
 
 var ctrlnglat = [{{ ctrlng }}, {{ ctrlat }}];
@@ -85,7 +83,6 @@ getBounds(function(bounds) {
         height: 200,
         prompt: '> '
     });
-
 
     map.on('load', function() {
         bounds = JSON.parse(bounds);
