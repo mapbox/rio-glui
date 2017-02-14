@@ -75,6 +75,9 @@
 		map.addControl(new mapboxgl.NavigationControl(), 'top-left');
 		map.addControl(new mapboxgl.AttributionControl({compact: true}), 'bottom-right');
 
+		// for now just use hardcoded formula
+		var color = encodeURIComponent("gamma b 1.85, gamma rg 1.95, sigmoidal rgb 35 0.13, saturation 5");
+
 		map.on('load', function () {
 
 				map.fitBounds([
@@ -84,7 +87,7 @@
 
 	      map.addSource("raster-tiles", {
 	          "type": "raster",
-	          "tiles": ["http://127.0.0.1:5000/tiles/{z}/{x}/{y}.png"],
+	          "tiles": ["tiles/" + color + "/{z}/{x}/{y}.png"],
 	          "tileSize": 256
 	      });
 

@@ -12,6 +12,8 @@ from io import BytesIO
 import numpy as np
 
 import rasterio as rio
+from rio_color.operations import parse_operations, gamma, sigmoidal, saturation
+from rio_color.utils import scale_dtype, to_math_type
 from rasterio import transform
 from rasterio.warp import reproject, transform_bounds, Resampling
 
@@ -90,8 +92,13 @@ class Peeker:
                     out[-1] = np.all(np.dstack(out[:3]) != self.src.nodatavals, axis=2).astype(np.uint8) * 255
                 else:
                     out[-1] = 255
+        try:
+            for ops in parse_operations(color):
+                color_tilearr = scale_dtype(ops(to_math_type(out)), np.uint8)
+        except ValueError as e:
+            raise click.UsageError(str(e))
 
-            img = Image.fromarray(np.dstack(out))
+            img = Image.fromarray(np.dstack(color_tilearr))
             if tileformat == 'jpeg':
                 img.convert('RGB')
 
@@ -104,6 +111,7 @@ class Peeker:
             return (500, 'application/json', json.dumps({"ErrorMessage": 'Error while processing the tile {}/{}/{}'.format(z,x,y)}).encode('utf-8'))
 
 pk = Peeker()
+
 
 @aiohttp_jinja2.template('index.html')
 def main_page(request):
@@ -135,7 +143,7 @@ async def bounds(request):
 
 app.router.add_get('/', main_page)
 app.router.add_get('/bounds', bounds)
-app.router.add_get('/tiles/{z}/{x}/{y}.png', tiles)
+app.router.add_get('/tiles/<color>/{z}/{x}/{y}.png', tiles)
 
 @click.command()
 @click.argument('srcpath', type=click.Path(exists=True))
@@ -143,3 +151,4 @@ def glui(srcpath):
     pk.start(srcpath)
     click.echo('Inspecting {0} at http://127.0.0.1:5000/'.format(srcpath), err=True)
     web.run_app(app, host='127.0.0.1', port=5000)
+

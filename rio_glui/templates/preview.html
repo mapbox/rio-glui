@@ -25,19 +25,22 @@ function getBounds(callback) {
     xmlHttp.open("GET", '/getbounds', true);
     xmlHttp.send(null);
 }
+
 mapboxgl.accessToken = 'pk.eyJ1IjoiZG5vbWFkYiIsImEiOiJjaW16aXFsZzUwNHJmdjdra3h0Nmd2cjY1In0.SqzkaKalXxQaPhQLjodQcQ';
 
 var ctrlnglat = [{{ ctrlng }}, {{ ctrlat }}];
 
 var map = new mapboxgl.Map({
     container: 'map',
-    style: 'mapbox://styles/mapbox/streets-v9',
+    style: 'mapbox://styles/mapbox/satellite-v9',
     center: ctrlnglat,
     zoom: 11,
     hash: true
 });
 
 getBounds(function(bounds) {
+    // for now just use hardcoded formula
+    var color = encodeURIComponent("gamma b 1.85, gamma rg 1.95, sigmoidal rgb 35 0.13, saturation 5");
     map.on('load', function() {
         bounds = JSON.parse(bounds);
         map.fitBounds([
@@ -46,8 +49,8 @@ getBounds(function(bounds) {
             ])
         map.addSource("raster-tiles", {
             "type": "raster",
-            "tiles": ["tiles/{z}/{x}/{y}.png"],
-            "tileSize": 512
+            "tiles": ["tiles/" + color + "/{z}/{x}/{y}.png"],
+            "tileSize": 256
         });
 
         map.addLayer({
