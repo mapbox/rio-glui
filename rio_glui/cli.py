@@ -50,9 +50,9 @@ class Peeker:
     @lru_cache()
     def get_tile(self, z, x, y):
         bounds = [c for i in (mercantile.xy(*mercantile.ul(x, y + 1, z)), mercantile.xy(*mercantile.ul(x + 1, y, z))) for c in i]
-        toaffine = transform.from_bounds(*bounds + [512, 512])
+        toaffine = transform.from_bounds(*bounds + [1024, 1024])
 
-        out = np.empty((4, 512, 512), dtype=np.uint8)
+        out = np.empty((4, 1024, 1024), dtype=np.uint8)
 
         for i in range(self.src.count):
             reproject(
@@ -71,7 +71,6 @@ class Peeker:
 
 
 def apply_color(imgarr, color):
-    print(color)
     try:
         for ops in parse_operations(color):
             color_tilearr = scale_dtype(ops(to_math_type(imgarr)), np.uint8)
@@ -96,12 +95,9 @@ def get_image(color, z, x, y):
     if not pk.tile_exists(z, x, y):
         abort(404)
 
-
     tilearr = pk.get_tile(z, x, y)
 
     img = apply_color(tilearr, color)
-
-    ## Add color formula here!
 
 
     sio = BytesIO()

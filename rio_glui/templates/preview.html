@@ -62,7 +62,7 @@ function setSource(map, color) {
             'type': 'raster',
             'id': 'raster-tiles',
             "tiles": ["tiles/" + color + "/{z}/{x}/{y}.png"],
-            "tileSize": 256
+            "tileSize": 512
         },
         "minzoom": 0,
         "maxzoom": 22
@@ -74,13 +74,15 @@ getBounds(function(bounds) {
     var color = encodeURIComponent("gamma b 1.85, gamma rg 1.95, sigmoidal rgb 35 0.13, saturation 1.15");
     $('#console').terminal(function(command) {
         if (command !== '') {
+            color = command.split('rio color')[-1];
+
             this.echo('APPLYING ' + command);
             setSource(map, command);
         } else {
            this.echo('');
         }
     }, {
-        greetings: 'USAGE: rio color <>',
+        greetings: 'USAGE: <>',
         name: 'js_demo',
         height: 200,
         prompt: '> '
