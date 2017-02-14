@@ -1,17 +1,21 @@
-from flask import Flask, render_template, request, jsonify, url_for, send_file, abort
+from __future__ import print_function
+import os
 
+from aiohttp import web
+import aiohttp_jinja2
+import jinja2
+
+import json
 import click
-import shutil, tempfile, os
+from io import BytesIO
 
-import rasterio as rio
 import numpy as np
 
+import rasterio as rio
 from rio_color.operations import parse_operations, gamma, sigmoidal, saturation
 from rio_color.utils import scale_dtype, to_math_type
-
-from io import StringIO, BytesIO
 from rasterio import transform
-from rasterio.warp import reproject, RESAMPLING, transform_bounds
+from rasterio.warp import reproject, transform_bounds, Resampling
 
 import logging
 log = logging.getLogger('werkzeug')
@@ -20,7 +24,10 @@ log.setLevel(logging.ERROR)
 import mercantile
 from PIL import Image
 
-app = Flask(__name__)
+from cachetools.func import lru_cache
+
+app = web.Application()
+aiohttp_jinja2.setup(app, loader=jinja2.FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')))
 
 class Peeker:
     def __init__(self):
@@ -30,125 +37,118 @@ class Peeker:
         self.src = rio.open(path)
         self.wgs_bounds = transform_bounds(*[self.src.crs, 'epsg:4326'] + list(self.src.bounds), densify_pts=0)
 
+    @lru_cache()
     def tile_exists(self, z, x, y):
         mintile = mercantile.tile(self.wgs_bounds[0], self.wgs_bounds[3], z)
         maxtile = mercantile.tile(self.wgs_bounds[2], self.wgs_bounds[1], z)
         return (x <= maxtile.x + 1) and (x >= mintile.x) and (y <= maxtile.y + 1) and (y >= mintile.y)
 
+    @lru_cache()
     def get_bounds(self):
         return list(self.wgs_bounds)
 
+    @lru_cache()
     def get_ctr_lng(self):
         return (self.wgs_bounds[2] - self.wgs_bounds[0]) / 2 + self.wgs_bounds[0]
 
+    @lru_cache()
     def get_ctr_lat(self):
         return (self.wgs_bounds[3] - self.wgs_bounds[1]) / 2 + self.wgs_bounds[1]
 
-    def get_tile(self, z, x, y):
-        bounds = [c for i in (mercantile.xy(*mercantile.ul(x, y + 1, z)), mercantile.xy(*mercantile.ul(x + 1, y, z))) for c in i]
-        toaffine = transform.from_bounds(*bounds + [512, 512])
+    # def __rescale_intensity__(image, in_range=[0,16000], out_range=[1,255]):
+    #     imin, imax = in_range
+    #     omin, omax = out_range
+    #     image = np.clip(image, imin, imax) - imin
+    #     image = image / float(imax - imin)
+    #     return (image * (omax - omin) + omin)
 
-        out = np.empty((4, 512, 512), dtype=np.uint8)
+    @lru_cache()
+    def get_tile(self, z, x, y, tileformat='png', color=''):
 
-        for i in range(self.src.count):
+        tilesize = 256
+
+        if tileformat == 'jpg':
+            tileformat = 'jpeg'
+        try:
+            bounds = [c for i in (mercantile.xy(*mercantile.ul(x, y + 1, z)), mercantile.xy(*mercantile.ul(x + 1, y, z))) for c in i]
+            toaffine = transform.from_bounds(*bounds + [tilesize, tilesize])
+
+            out = np.empty((4, tilesize, tilesize), dtype=np.uint8)
+
             reproject(
-                rio.band(self.src, i + 1), out[i],
+                rio.band(self.src, self.src.indexes),
+                out,
                 dst_transform=toaffine,
-                dst_crs="init='epsg:3857'",
-                resampling=RESAMPLING.bilinear)
+                dst_crs='epsg:3857',
+                src_nodata=0,
+                dst_nodata=0,
+                resampling=Resampling.bilinear)
 
-        if self.src.count == 3:
-            if self.src.nodatavals:
-                out[-1] = np.all(np.dstack(out[:3]) != self.src.nodatavals, axis=2).astype(np.uint8) * 255
-            else:
-                out[-1] = 255
+            # matrix = np.where(out > 0, self.__rescale_intensity__(out, in_range=[0,16000], out_range=[1, 255]), 0)
+            # out = matrix.astype(np.uint8)
 
-        return out
+            if self.src.count == 3:
+                if self.src.nodatavals:
+                    out[-1] = np.all(np.dstack(out[:3]) != self.src.nodatavals, axis=2).astype(np.uint8) * 255
+                else:
+                    out[-1] = 255
 
-def recursepath(basepath, path_components):
-    path_components = [str(p) for p in path_components]
-    tpath = os.path.join(*[basepath] + path_components)
-    if not os.path.exists(tpath):
-        for i, p in enumerate(path_components):
-            tpath = os.path.join(*[basepath] + path_components[:i+1])
-            if not os.path.exists(tpath):
-                os.mkdir(tpath)
-                
-    return tpath
+            for ops in parse_operations(color):
+                color_tilearr = scale_dtype(ops(to_math_type(out)), np.uint8)
+        except ValueError as e:
+            raise click.UsageError(str(e))
 
-class IMGCacher:
-    def __init__(self):
-        self.tmpdir = tempfile.mkdtemp()
+            img = Image.fromarray(np.dstack(color_tilearr))
+            if tileformat == 'jpeg':
+                img.convert('RGB')
 
-    def add(self, img, z, x, y):
-        directory = recursepath(self.tmpdir, [z, x])
-        cachetile = os.path.join('{0}/{1}.png'.format(directory, y))
+            sio = BytesIO()
+            img.save(sio, tileformat)
+            sio.seek(0)
 
-        log.debug('Caching tile at {0}'.format(cachetile))
-        img.save(cachetile)
-
-    def load(self, z, x, y):
-        cachetile = os.path.join('{0}/{1}/{2}/{3}.png'.format(self.tmpdir, z, x, y))
-        if os.path.exists(cachetile):
-            log.debug('Loading cached tile at {0}'.format(cachetile))
-            with rio.open(cachetile) as src:
-                return src.read()
-        else:
-            return None
-
-        
-    def __enter__(self):
-        return self
-    def __exit__(self, ext_t, ext_v, trace):
-        shutil.rmtree(self.tmpdir)
-        if ext_t:
-            click.echo("in __exit__")
+            return (200, 'image/{}'.format(tileformat), sio.read())
+        except:
+            return (500, 'application/json', json.dumps({"ErrorMessage": 'Error while processing the tile {}/{}/{}'.format(z,x,y)}).encode('utf-8'))
 
 pk = Peeker()
-fc = IMGCacher()
-
-@app.route('/')
-def main_page():
-    return render_template('preview.html', ctrlat=pk.get_ctr_lat(), ctrlng=pk.get_ctr_lng())
 
 
-@app.route('/tiles/<color>/<z>/<x>/<y>.png')
-def get_image(color, z, x, y):
+@aiohttp_jinja2.template('index.html')
+def main_page(request):
+    return {'bounds': pk.get_bounds(), 'ctrlat': pk.get_ctr_lat(), 'ctrlng': pk.get_ctr_lng()}
 
-    z, x, y = [int(t) for t in [z, x, y]]
+#Get Tiles
+async def tiles(request):
+    x = int(request.match_info.get('x'))
+    y = int(request.match_info.get('y'))
+    z = int(request.match_info.get('z'))
+
     if not pk.tile_exists(z, x, y):
-        abort(404)
+        return web.Response(
+            status=204,
+            body=json.dumps({"WarningMessage": 'Tile {}/{}/{} is outside image bounds'.format(z,x,y)}).encode('utf-8'),
+            content_type='application/json'
+        )
 
-    # try to load from cache
-    tilearr = fc.load(z, x, y)
+    response = pk.get_tile(z, x, y)
+    return web.Response(status=response[0], body=response[2], content_type=response[1])
 
-    if tilearr is None:
-        tilearr = pk.get_tile(z, x, y)
+#Get Bounds
+async def bounds(request):
+    return web.Response(
+        status=400,
+        body=json.dumps(pk.get_bounds()).encode('utf-8'),
+        content_type='application/json'
+    )
 
-    try:
-        for ops in parse_operations(color):
-            color_tilearr = scale_dtype(ops(to_math_type(tilearr)), np.uint8)
-    except ValueError as e:
-        raise click.UsageError(str(e))
-
-    img = Image.fromarray(np.dstack(color_tilearr))
-    # put in cache
-    fc.add(img, z, x, y)
-
-    sio = BytesIO()
-    img.save(sio, 'PNG')
-    sio.seek(0)
-
-    return send_file(sio, mimetype='image/png')
-
-@app.route('/getbounds', methods=['GET', 'POST'])
-def set_source():
-
-    return jsonify(pk.get_bounds())
+app.router.add_get('/', main_page)
+app.router.add_get('/bounds', bounds)
+app.router.add_get('/tiles/<color>/{z}/{x}/{y}.png', tiles)
 
 @click.command()
 @click.argument('srcpath', type=click.Path(exists=True))
 def glui(srcpath):
     pk.start(srcpath)
     click.echo('Inspecting {0} at http://127.0.0.1:5000/'.format(srcpath), err=True)
-    app.run(debug=True, port=12345)
+    web.run_app(app, host='127.0.0.1', port=5000)
+
