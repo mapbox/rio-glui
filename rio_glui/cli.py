@@ -6,7 +6,10 @@ import shutil, tempfile, os
 import rasterio as rio
 import numpy as np
 
-from rio_color.operations import parse_operations
+from rio_color.operations import parse_operations, gamma, sigmoidal, saturation
+from rio_color.utils import scale_dtype, to_math_type
+
+from functools import lru_cache
 
 
 from io import StringIO, BytesIO
@@ -44,6 +47,7 @@ class Peeker:
     def get_ctr_lat(self):
         return (self.wgs_bounds[3] - self.wgs_bounds[1]) / 2 + self.wgs_bounds[1]
 
+    @lru_cache()
     def get_tile(self, z, x, y):
         bounds = [c for i in (mercantile.xy(*mercantile.ul(x, y + 1, z)), mercantile.xy(*mercantile.ul(x + 1, y, z))) for c in i]
         toaffine = transform.from_bounds(*bounds + [512, 512])
@@ -65,47 +69,20 @@ class Peeker:
 
         return out
 
-def recursepath(basepath, path_components):
-    path_components = [str(p) for p in path_components]
-    tpath = os.path.join(*[basepath] + path_components)
-    if not os.path.exists(tpath):
-        for i, p in enumerate(path_components):
-            tpath = os.path.join(*[basepath] + path_components[:i+1])
-            if not os.path.exists(tpath):
-                os.mkdir(tpath)
-                
-    return tpath
 
-class IMGCacher:
-    def __init__(self):
-        self.tmpdir = tempfile.mkdtemp()
+def apply_color(imgarr, color):
+    print(color)
+    try:
+        for ops in parse_operations(color):
+            color_tilearr = scale_dtype(ops(to_math_type(imgarr)), np.uint8)
+    except ValueError as e:
+        raise click.UsageError(str(e))
 
-    def add(self, img, z, x, y):
-        directory = recursepath(self.tmpdir, [z, x])
-        cachetile = os.path.join('{0}/{1}.png'.format(directory, y))
+    return Image.fromarray(np.dstack(color_tilearr))
 
-        log.debug('Caching tile at {0}'.format(cachetile))
-        img.save(cachetile)
-
-    def load(self, z, x, y):
-        cachetile = os.path.join('{0}/{1}/{2}/{3}.png'.format(self.tmpdir, z, x, y))
-        if os.path.exists(cachetile):
-            log.debug('Loading cached tile at {0}'.format(cachetile))
-            with rio.open(cachetile) as src:
-                return src.read()
-        else:
-            return None
-
-        
-    def __enter__(self):
-        return self
-    def __exit__(self, ext_t, ext_v, trace):
-        shutil.rmtree(self.tmpdir)
-        if ext_t:
-            click.echo("in __exit__")
 
 pk = Peeker()
-fc = IMGCacher()
+
 
 @app.route('/')
 def main_page():
@@ -119,19 +96,13 @@ def get_image(color, z, x, y):
     if not pk.tile_exists(z, x, y):
         abort(404)
 
-    # try to load from cache
-    tilearr = fc.load(z, x, y)
 
-    if tilearr is None:
-        tilearr = pk.get_tile(z, x, y)
+    tilearr = pk.get_tile(z, x, y)
+
+    img = apply_color(tilearr, color)
 
     ## Add color formula here!
-    # for op in parse_operations(color):
-    #     <do op>
 
-    img = Image.fromarray(np.dstack(tilearr))
-    # put in cache
-    fc.add(img, z, x, y)
 
     sio = BytesIO()
     img.save(sio, 'PNG')
