@@ -4,16 +4,23 @@
     <meta charset='utf-8' />
     <title></title>
     <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
-    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.25.1/mapbox-gl.js'></script>
-    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.25.1/mapbox-gl.css' rel='stylesheet' />
+<script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.32.1/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.32.1/mapbox-gl.css' rel='stylesheet' />
     <style>
         body { margin:0; padding:0; }
-        #map { position:absolute; top:0; bottom:0; width:100%; }
+        #map { position:absolute; top:0; bottom:200px; width:100%; }
+        #console {position: absolute; bottom: 0px; height: 200px; width: 100%; background-color: black}
     </style>
+    <link href='https://api.mapbox.com/mapbox-assembly/v0.8.1/assembly.min.css' rel='stylesheet'>
+    <script async defer src='https://api.mapbox.com/mapbox-assembly/v0.8.1/assembly.js'></script>
+    <script src="{{url_for('static', filename='jquery-2.1.1.js')}}"></script>
+    <script src="{{url_for('static', filename='jquery.terminal.min.js')}}"></script>
+      <link href="{{url_for('static', filename='jquery.terminal.css')}}" rel="stylesheet"/>
 </head>
 <body>
 
 <div id='map'></div>
+<div id='console'></div>
 <script>
 
 function getBounds(callback) {
@@ -25,39 +32,66 @@ function getBounds(callback) {
     xmlHttp.open("GET", '/getbounds', true);
     xmlHttp.send(null);
 }
+
 mapboxgl.accessToken = 'pk.eyJ1IjoiZG5vbWFkYiIsImEiOiJjaW16aXFsZzUwNHJmdjdra3h0Nmd2cjY1In0.SqzkaKalXxQaPhQLjodQcQ';
 
 var ctrlnglat = [{{ ctrlng }}, {{ ctrlat }}];
 
 var map = new mapboxgl.Map({
     container: 'map',
-    style: 'mapbox://styles/mapbox/streets-v9',
+    style: 'mapbox://styles/mapbox/satellite-v9',
     center: ctrlnglat,
     zoom: 11,
     hash: true
 });
 
+function setSource(map, color) {
+    try {
+        map.removeLayer('raster-tiles');
+        map.removeSource('raster-tiles');
+    } catch(err) {
+
+    }
+
+    map.addLayer({
+        "id": "raster-tiles",
+        "type": "raster",
+        "source": {
+            'type': 'raster',
+            'id': 'raster-tiles',
+            "tiles": ["tiles/" + color + "/{z}/{x}/{y}.png"],
+            "tileSize": 256
+        },
+        "minzoom": 0,
+        "maxzoom": 22
+    });
+}
+
 getBounds(function(bounds) {
+    // for now just use hardcoded formula
+    var color = encodeURIComponent("gamma b 1.85, gamma rg 1.95, sigmoidal rgb 35 0.13, saturation 1.15");
+    $('#console').terminal(function(command) {
+        if (command !== '') {
+            this.echo('APPLYING ' + command);
+            setSource(map, command);
+        } else {
+           this.echo('');
+        }
+    }, {
+        greetings: 'USAGE: rio color <>',
+        name: 'js_demo',
+        height: 200,
+        prompt: '> '
+    });
+
     map.on('load', function() {
         bounds = JSON.parse(bounds);
         map.fitBounds([
             [bounds[0], bounds[1]],
             [bounds[2], bounds[3]]
-            ])
-        map.addSource("raster-tiles", {
-            "type": "raster",
-            "tiles": ["tiles/{z}/{x}/{y}.png"],
-            "tileSize": 512
-        });
+        ]);
+        setSource(map, color);
 
-        map.addLayer({
-            "id": "raster-tiles",
-            "type": "raster",
-            "source": "raster-tiles",
-            "minzoom": 0,
-            "maxzoom": 22,
-            "paint": {"raster-opacity": 0.90}
-        })
     });
 })
 </script>

@@ -1,10 +1,13 @@
 from flask import Flask, render_template, request, jsonify, url_for, send_file, abort
 
 import click
+import shutil, tempfile, os
 
 import rasterio as rio
 import numpy as np
 
+from rio_color.operations import parse_operations, gamma, sigmoidal, saturation
+from rio_color.utils import scale_dtype, to_math_type
 
 from io import StringIO, BytesIO
 from rasterio import transform
@@ -62,18 +65,76 @@ class Peeker:
 
         return out
 
+def recursepath(basepath, path_components):
+    path_components = [str(p) for p in path_components]
+    tpath = os.path.join(*[basepath] + path_components)
+    if not os.path.exists(tpath):
+        for i, p in enumerate(path_components):
+            tpath = os.path.join(*[basepath] + path_components[:i+1])
+            if not os.path.exists(tpath):
+                os.mkdir(tpath)
+                
+    return tpath
+
+class IMGCacher:
+    def __init__(self):
+        self.tmpdir = tempfile.mkdtemp()
+
+    def add(self, img, z, x, y):
+        directory = recursepath(self.tmpdir, [z, x])
+        cachetile = os.path.join('{0}/{1}.png'.format(directory, y))
+
+        log.debug('Caching tile at {0}'.format(cachetile))
+        img.save(cachetile)
+
+    def load(self, z, x, y):
+        cachetile = os.path.join('{0}/{1}/{2}/{3}.png'.format(self.tmpdir, z, x, y))
+        if os.path.exists(cachetile):
+            log.debug('Loading cached tile at {0}'.format(cachetile))
+            with rio.open(cachetile) as src:
+                return src.read()
+        else:
+            return None
+
+        
+    def __enter__(self):
+        return self
+    def __exit__(self, ext_t, ext_v, trace):
+        shutil.rmtree(self.tmpdir)
+        if ext_t:
+            click.echo("in __exit__")
+
 pk = Peeker()
+fc = IMGCacher()
 
 @app.route('/')
 def main_page():
     return render_template('preview.html', ctrlat=pk.get_ctr_lat(), ctrlng=pk.get_ctr_lng())
 
-@app.route('/tiles/<z>/<x>/<y>.png')
-def get_image(z, x, y):
+
+@app.route('/tiles/<color>/<z>/<x>/<y>.png')
+def get_image(color, z, x, y):
+    print(color)
     z, x, y = [int(t) for t in [z, x, y]]
     if not pk.tile_exists(z, x, y):
         abort(404)
-    img = Image.fromarray(np.dstack(pk.get_tile(z, x, y)))
+
+    # try to load from cache
+    tilearr = fc.load(z, x, y)
+
+    if tilearr is None:
+        tilearr = pk.get_tile(z, x, y)
+
+    try:
+        for ops in parse_operations(color):
+            color_tilearr = scale_dtype(ops(to_math_type(tilearr)), np.uint8)
+    except ValueError as e:
+        raise click.UsageError(str(e))
+
+    img = Image.fromarray(np.dstack(color_tilearr))
+    # put in cache
+    fc.add(img, z, x, y)
+
     sio = BytesIO()
     img.save(sio, 'PNG')
     sio.seek(0)
@@ -90,4 +151,4 @@ def set_source():
 def glui(srcpath):
     pk.start(srcpath)
     click.echo('Inspecting {0} at http://127.0.0.1:5000/'.format(srcpath), err=True)
-    app.run()
+    app.run(debug=True, port=12345)
