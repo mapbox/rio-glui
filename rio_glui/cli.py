@@ -11,7 +11,7 @@ from rio_color.operations import parse_operations
 
 from io import StringIO, BytesIO
 from rasterio import transform
-from rasterio.warp import reproject, RESAMPLING, transform_bounds
+from rasterio.warp import reproject, Resampling, transform_bounds
 
 import logging
 log = logging.getLogger('werkzeug')
@@ -55,7 +55,7 @@ class Peeker:
                 rio.band(self.src, i + 1), out[i],
                 dst_transform=toaffine,
                 dst_crs="init='epsg:3857'",
-                resampling=RESAMPLING.bilinear)
+                resampling=Resampling.bilinear)
 
         if self.src.count == 3:
             if self.src.nodatavals:
@@ -114,7 +114,7 @@ def main_page():
 
 @app.route('/tiles/<color>/<z>/<x>/<y>.png')
 def get_image(color, z, x, y):
-    print(color)
+
     z, x, y = [int(t) for t in [z, x, y]]
     if not pk.tile_exists(z, x, y):
         abort(404)
