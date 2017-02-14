@@ -114,7 +114,7 @@ def main_page():
 
 @app.route('/tiles/<color>/<z>/<x>/<y>.png')
 def get_image(color, z, x, y):
-
+    print(color)
     z, x, y = [int(t) for t in [z, x, y]]
     if not pk.tile_exists(z, x, y):
         abort(404)
