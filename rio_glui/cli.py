@@ -92,7 +92,7 @@ class Peeker:
                     out[-1] = np.all(np.dstack(out[:3]) != self.src.nodatavals, axis=2).astype(np.uint8) * 255
                 else:
                     out[-1] = 255
-        try:
+
             for ops in parse_operations(color):
                 color_tilearr = scale_dtype(ops(to_math_type(out)), np.uint8)
         except ValueError as e:
