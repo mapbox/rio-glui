@@ -71,7 +71,7 @@ function setSource(map, color) {
 
 getBounds(function(bounds) {
     // for now just use hardcoded formula
-    var color = encodeURIComponent("gamma b 1.85, gamma rg 1.95, sigmoidal rgb 35 0.13, saturation 1.15");
+    var color = encodeURIComponent("gamma b 1, gamma rg 1");
     var shell = $('#console').terminal(function(command) {
         if (command !== '') {
             color = command.split('rio color')[-1];

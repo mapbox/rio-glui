@@ -76,11 +76,11 @@ class Peeker:
 def apply_color(imgarr, color):
     try:
         for ops in parse_operations(color):
-            color_tilearr = scale_dtype(ops(to_math_type(imgarr)), np.uint8)
+            imgarr = scale_dtype(ops(to_math_type(imgarr)), np.uint8)
     except ValueError as e:
         raise click.UsageError(str(e))
 
-    return Image.fromarray(np.dstack(color_tilearr))
+    return Image.fromarray(np.dstack(imgarr))
 
 
 pk = Peeker()
