@@ -15,7 +15,10 @@ Demo rasterio / Mapbox GL JS demo app
 Usage: rio glui [OPTIONS] SRCPATH
 
 Options:
-  --help  Show this message and exit.
+  --shape INTEGER
+  --tile-size INTEGER
+  --prt INTEGER        the port of the webserver. Defaults to 5000
+  --help               Show this message and exit.
 ```
 eg
 ```
