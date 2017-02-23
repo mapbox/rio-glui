@@ -91,9 +91,8 @@ def main_page():
     return render_template('preview.html', ctrlat=pk.get_ctr_lat(), ctrlng=pk.get_ctr_lng(), tile_size=pk.tile_size)
 
 
-@app.route('/tiles/<color>/<z>/<x>/<y>.png')
-def get_image(color, z, x, y):
-
+@app.route('/tiles/<rdate>/<color>/<z>/<x>/<y>.png')
+def get_image(color, rdate, z, x, y):
     z, x, y = [int(t) for t in [z, x, y]]
     if not pk.tile_exists(z, x, y):
         abort(404)

@@ -55,13 +55,17 @@ function setSource(map, color) {
 
     }
 
+    var rd = new Date();
+
+
+
     map.addLayer({
         "id": "raster-tiles",
         "type": "raster",
         "source": {
             'type': 'raster',
             'id': 'raster-tiles',
-            "tiles": ["tiles/" + color + "/{z}/{x}/{y}.png"],
+            "tiles": ["tiles/" + rd.getTime() + '/' + color + "/{z}/{x}/{y}.png"],
             "tileSize": {{ tile_size }}
         },
         "minzoom": 0,
