@@ -118,7 +118,8 @@ def set_source():
 @click.argument('srcpath', type=click.Path(exists=True))
 @click.option('--shape', type=int, default=512)
 @click.option('--tile-size', type=int, default=512)
-@click.option('--prt', type=int, default=5000)
+@click.option('--prt', type=int, default=5000,
+            help= "the port of the webserver. Defaults to 5000.")
 def glui(srcpath, shape, tile_size, prt):
     pk.start(srcpath, shape, tile_size)
     click.echo('Inspecting {0} at http://127.0.0.1:{1}/'.format(srcpath, prt), err=True)
