@@ -3,3 +3,4 @@ rasterio
 Pillow
 flask
 mercantile
+rio-color
