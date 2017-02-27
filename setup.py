@@ -31,7 +31,7 @@ setup(name='rio-glui',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
       include_package_data=True,
       zip_safe=False,
-      install_requires=["click", "rasterio", "Pillow", "flask", "mercantile"],
+      install_requires=read('requirements.txt').splitlines(),
       extras_require={
           'test': ['pytest', 'pytest-cov', 'codecov']},
       entry_points="""
