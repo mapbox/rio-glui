@@ -2,6 +2,8 @@
 
 Demo rasterio / Mapbox GL JS demo app
 
+![](http://i.giphy.com/3ohzdVQrl8uUc8I2dO.gif)
+
 ## Installation
 
 ```
