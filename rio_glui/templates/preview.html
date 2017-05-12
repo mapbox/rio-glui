@@ -23,17 +23,6 @@
 <div id='console'></div>
 <script>
 
-function getBounds(callback) {
-    var xmlHttp = new XMLHttpRequest();
-    xmlHttp.onreadystatechange = function() { 
-        if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
-            callback(xmlHttp.responseText);
-    }
-    xmlHttp.open("GET", '/getbounds', true);
-    xmlHttp.send(null);
-}
-
-
 
 mapboxgl.accessToken = 'pk.eyJ1IjoiZG5vbWFkYiIsImEiOiJjaW16aXFsZzUwNHJmdjdra3h0Nmd2cjY1In0.SqzkaKalXxQaPhQLjodQcQ';
 
@@ -43,7 +32,9 @@ var map = new mapboxgl.Map({
     container: 'map',
     style: 'mapbox://styles/mapbox/satellite-v9',
     center: ctrlnglat,
-    zoom: 11,
+    zoom: 13,
+    minZoom: 13,
+    maxZoom: 13,
     hash: true
 });
 
@@ -73,36 +64,31 @@ function setSource(map, color) {
     });
 }
 
-getBounds(function(bounds) {
-    // for now just use hardcoded formula
-    var color = encodeURIComponent("gamma b 1, gamma rg 1");
-    var shell = $('#console').terminal(function(command) {
-        if (command !== '') {
-            color = command.split('rio color')[-1];
 
-            this.echo('APPLYING ' + command);
-            setSource(map, encodeURIComponent(command));
-        } else {
-           this.echo('');
-        }
-    }, {
-        greetings: 'USAGE: <>',
-        name: 'js_demo',
-        height: 200,
-        prompt: '> '
-    });
+// for now just use hardcoded formula
+var color = encodeURIComponent("gamma b 1, gamma rg 1");
+var shell = $('#console').terminal(function(command) {
+    if (command !== '') {
+        color = command.split('rio color')[-1];
+
+        this.echo('APPLYING ' + command);
+        setSource(map, encodeURIComponent(command));
+    } else {
+       this.echo('');
+    }
+}, {
+    greetings: 'USAGE: <>',
+    name: 'js_demo',
+    height: 200,
+    prompt: '> '
+});
 
 
-    map.on('load', function() {
-        bounds = JSON.parse(bounds);
-        map.fitBounds([
-            [bounds[0], bounds[1]],
-            [bounds[2], bounds[3]]
-        ]);
-        setSource(map, color);
+map.on('load', function() {
+    setSource(map, color);
 
-    });
-})
+});
+
 </script>
 </body>
 </html>

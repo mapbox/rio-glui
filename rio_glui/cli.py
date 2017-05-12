@@ -15,6 +15,17 @@ from io import StringIO, BytesIO
 from rasterio import transform, windows
 from rasterio.warp import reproject, Resampling, transform_bounds
 
+
+import boto3
+import re
+
+from io import BytesIO
+import numpy as np
+from PIL import Image
+
+
+client = boto3.client('s3')
+
 import logging
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
@@ -25,52 +36,55 @@ from PIL import Image
 
 app = Flask(__name__)
 
-class Peeker:
+
+def adjust_key(key):
+    typepattern = "scenes\/(?P<z>[0-9]+)-(?P<x>[0-9]+)-(?P<y>[0-9]+)-(?P<source_id>[a-z0-9_]+)-(?P<date>(19|20)[0-9]{2}([0-9]{4})?)-(?P<scene_id>[a-z0-9_]+)\.(?P<ext>(txt|tif))$"
+    match = re.match(typepattern, key, re.IGNORECASE)
+
+    if match:
+        return 'previews/{source_id}/{date}/{scene_id}/{z}-{x}-{y}-{source_id}-{date}-{scene_id}.png'.format(**match.groupdict())
+
+def load_img(key):
+    response = client.get_object(
+        Bucket='mapbox-pxm',
+        Key=key)
+
+    with BytesIO(response['Body'].read()) as src:
+        data_arr = np.array(Image.open(src))
+        return data_arr
+
+def load_zxys(z, x, y, source):
+    prefix = 'scenes/{z}-{x}-{y}-{source}'.format(z=z, x=x, y=y, source=source)
+    img = np.zeros((1024, 1024, 4), dtype=np.uint8)
+    response = client.list_objects_v2(
+            Bucket='mapbox-pxm',
+            Prefix=prefix)
+
+    if 'Contents' in response:
+        for k in response['Contents']:
+            pkey = adjust_key(k['Key'])
+            if pkey is not None:
+                timg = load_img(pkey)
+                mask = timg[:, :, -1] == 255
+                img[mask] = timg[mask]
+                
+        return np.rollaxis(img, 2, 0)
+
+
+class ScenePeeker:
     def __init__(self):
         pass
 
-    def start(self, path, img_dimension=512, tile_size=256):
-        self.src = rio.open(path)
+    def start(self, source, tile_size=256, center=[-122.0, 38.0]):
+        self.source = source
         self.tile_size = tile_size
-        self.img_dimension= img_dimension
-        self.wgs_bounds = transform_bounds(*[self.src.crs, 'epsg:4326'] + list(self.src.bounds), densify_pts=0)
-
-    def tile_exists(self, z, x, y):
-        mintile = mercantile.tile(self.wgs_bounds[0], self.wgs_bounds[3], z)
-        maxtile = mercantile.tile(self.wgs_bounds[2], self.wgs_bounds[1], z)
-        return (x <= maxtile.x + 1) and (x >= mintile.x) and (y <= maxtile.y + 1) and (y >= mintile.y)
-
-    def get_bounds(self):
-        return list(self.wgs_bounds)
-
-    def get_ctr_lng(self):
-        return (self.wgs_bounds[2] - self.wgs_bounds[0]) / 2 + self.wgs_bounds[0]
-
-    def get_ctr_lat(self):
-        return (self.wgs_bounds[3] - self.wgs_bounds[1]) / 2 + self.wgs_bounds[1]
+        
+        self.lat = center[1]
+        self.lng = center[0]
 
     @lru_cache()
     def get_tile(self, z, x, y):
-        bounds = [c for i in (mercantile.xy(*mercantile.ul(x, y + 1, z)), mercantile.xy(*mercantile.ul(x + 1, y, z))) for c in i]
-
-        toaffine = transform.from_bounds(*bounds + [self.img_dimension, self.img_dimension])
-
-        out = np.empty((4, self.img_dimension, self.img_dimension), dtype=np.uint8)
-
-        for i in range(self.src.count):
-            reproject(
-                rio.band(self.src, i + 1), out[i],
-                dst_transform=toaffine,
-                dst_crs="init='epsg:3857'",
-                resampling=Resampling.bilinear)
-
-        if self.src.count == 3:
-            if self.src.nodatavals:
-                out[-1] = np.all(np.dstack(out[:3]) != self.src.nodatavals, axis=2).astype(np.uint8) * 255
-            else:
-                out[-1] = 255
-
-        return out
+        return load_zxys(z, x, y, self.source)
 
 
 def apply_color(imgarr, color):
@@ -83,24 +97,25 @@ def apply_color(imgarr, color):
     return Image.fromarray(np.dstack(imgarr))
 
 
-pk = Peeker()
+pk = ScenePeeker()
 
 
 @app.route('/')
 def main_page():
-    return render_template('preview.html', ctrlat=pk.get_ctr_lat(), ctrlng=pk.get_ctr_lng(), tile_size=pk.tile_size)
+    return render_template('preview.html', ctrlat=pk.lat, ctrlng=pk.lng, tile_size=pk.tile_size)
 
 
 @app.route('/tiles/<rdate>/<color>/<z>/<x>/<y>.png')
 def get_image(color, rdate, z, x, y):
     z, x, y = [int(t) for t in [z, x, y]]
-    if not pk.tile_exists(z, x, y):
-        abort(404)
 
+    
     tilearr = pk.get_tile(z, x, y)
 
-    img = apply_color(tilearr, color)
+    if tilearr is None:
+        abort(404)
 
+    img = apply_color(tilearr, color)
 
     sio = BytesIO()
     img.save(sio, 'PNG')
@@ -108,18 +123,16 @@ def get_image(color, rdate, z, x, y):
 
     return send_file(sio, mimetype='image/png')
 
-@app.route('/getbounds', methods=['GET', 'POST'])
-def set_source():
-
-    return jsonify(pk.get_bounds())
 
 @click.command()
-@click.argument('srcpath', type=click.Path(exists=True))
-@click.option('--shape', type=int, default=512)
+@click.argument('source', type=str)
 @click.option('--tile-size', type=int, default=512)
+@click.option('--center', type=str, default='[-122.0, 38.0]')
 @click.option('--prt', type=int, default=5000,
             help= "the port of the webserver. Defaults to 5000.")
-def glui(srcpath, shape, tile_size, prt):
-    pk.start(srcpath, shape, tile_size)
-    click.echo('Inspecting {0} at http://127.0.0.1:{1}/'.format(srcpath, prt), err=True)
+def glui(source, tile_size, center, prt):
+    center = eval(center)
+
+    pk.start(source, tile_size, center)
+    click.echo('Inspecting {0} at http://127.0.0.1:{1}/'.format(source, prt), err=True)
     app.run(threaded=True, port=prt)
