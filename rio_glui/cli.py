@@ -13,7 +13,9 @@ from functools import lru_cache
 
 from io import StringIO, BytesIO
 from rasterio import transform, windows
-from rasterio.warp import reproject, Resampling, transform_bounds
+
+from rasterio.warp import reproject, transform_bounds, Resampling, calculate_default_transform
+from rasterio.windows import from_bounds
 
 import logging
 log = logging.getLogger('werkzeug')
@@ -58,9 +60,16 @@ class Peeker:
         out = np.empty((4, self.img_dimension, self.img_dimension), dtype=np.uint8)
 
         for i in range(self.src.count):
+
+            src_affine, width, height = calculate_default_transform('epsg:3857', self.src.crs, tilesize, tilesize, *bounds)
+            img_bounds = transform_bounds(*['epsg:3857', self.src.crs] + bounds, densify_pts=0)
+            window = from_bounds(*list(img_bounds) + [self.src.transform], boundless=True)
+
             reproject(
-                rio.band(self.src, i + 1), out[i],
+                src.read(i + 1, window=window, out_shape=(height, width), boundless=True).astype(self.src.profile['dtype']),
+                src_transform=src_affine,
                 dst_transform=toaffine,
+                src_crs=self.src.crs,
                 dst_crs="init='epsg:3857'",
                 resampling=Resampling.bilinear)
 
@@ -88,7 +97,7 @@ pk = Peeker()
 
 @app.route('/')
 def main_page():
-    return render_template('preview.html', ctrlat=pk.get_ctr_lat(), ctrlng=pk.get_ctr_lng(), tile_size=pk.tile_size)
+    return render_template('preview.html', ctrlat=pk.get_ctr_lat(), ctrlng=pk.get_ctr_lng(), tile_size=pk.tile_size, bounds=pk.wgs_bounds)
 
 
 @app.route('/tiles/<rdate>/<color>/<z>/<x>/<y>.png')
@@ -100,7 +109,6 @@ def get_image(color, rdate, z, x, y):
     tilearr = pk.get_tile(z, x, y)
 
     img = apply_color(tilearr, color)
-
 
     sio = BytesIO()
     img.save(sio, 'PNG')
