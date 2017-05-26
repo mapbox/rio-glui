@@ -14,6 +14,7 @@ from functools import lru_cache
 from io import StringIO, BytesIO
 from rasterio import transform, windows
 from rasterio.warp import reproject, Resampling, transform_bounds
+from rasterio.crs import CRS
 
 import logging
 log = logging.getLogger('werkzeug')
@@ -61,7 +62,7 @@ class Peeker:
             reproject(
                 rio.band(self.src, i + 1), out[i],
                 dst_transform=toaffine,
-                dst_crs="init='epsg:3857'",
+                dst_crs=CRS({'init': 'epsg:3857'}),
                 resampling=Resampling.bilinear)
 
         if self.src.count == 3:
