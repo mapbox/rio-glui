@@ -1,30 +1,24 @@
-from flask import Flask, render_template, request, jsonify, url_for, send_file, abort
-
-import click
-import shutil, tempfile, os
-
-import rasterio as rio
-import numpy as np
-
-from rio_color.operations import parse_operations, gamma, sigmoidal, saturation
-from rio_color.utils import scale_dtype, to_math_type
-
 from functools import lru_cache
-
-from io import StringIO, BytesIO
-from rasterio import transform, windows
-from rasterio.warp import reproject, Resampling, transform_bounds
-from rasterio.crs import CRS
-
+from io import BytesIO
 import logging
+
+from PIL import Image
+from flask import Flask, render_template, jsonify, send_file, abort
+from rasterio import transform
+from rasterio.crs import CRS
+from rasterio.warp import reproject, Resampling, transform_bounds
+from rio_color.operations import parse_operations
+from rio_color.utils import scale_dtype, to_math_type
+import click
+import mercantile
+import numpy as np
+import rasterio as rio
+
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
-import mercantile
-from PIL import Image
-
-
 app = Flask(__name__)
+
 
 class Peeker:
     def __init__(self):
