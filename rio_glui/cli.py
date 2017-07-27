@@ -48,10 +48,13 @@ class Peeker:
     def get_ctr_lat(self):
         return (self.wgs_bounds[3] - self.wgs_bounds[1]) / 2 + self.wgs_bounds[1]
 
-    # @lru_cache()
+    @lru_cache()
     def get_tile(self, z, x, y):
-        bounds = [c for i in (mercantile.xy(*mercantile.ul(x, y + 1, z)), mercantile.xy(*mercantile.ul(x + 1, y, z))) for c in i]
-        toaffine = transform.from_bounds(*bounds + [self.img_dimension, self.img_dimension])
+        bounds = [c for i in (
+            mercantile.xy(*mercantile.ul(x, y + 1, z)),
+            mercantile.xy(*mercantile.ul(x + 1, y, z))) for c in i]
+        toaffine = transform.from_bounds(
+            *bounds + [self.img_dimension, self.img_dimension])
 
         with rio.open(self.path) as src:
             source_arr = src.read()
