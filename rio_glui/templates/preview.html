@@ -22,59 +22,41 @@
 <div id='map'></div>
 <div id='console'></div>
 <script>
+    mapboxgl.accessToken = 'pk.eyJ1IjoiZG5vbWFkYiIsImEiOiJjaW16aXFsZzUwNHJmdjdra3h0Nmd2cjY1In0.SqzkaKalXxQaPhQLjodQcQ';
 
-function getBounds(callback) {
-    var xmlHttp = new XMLHttpRequest();
-    xmlHttp.onreadystatechange = function() {
-        if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
-            callback(xmlHttp.responseText);
-    }
-    xmlHttp.open("GET", '/getbounds', true);
-    xmlHttp.send(null);
-}
+    var ctrlnglat = [{{ ctrlng }}, {{ ctrlat }}];
 
-
-
-mapboxgl.accessToken = 'pk.eyJ1IjoiZG5vbWFkYiIsImEiOiJjaW16aXFsZzUwNHJmdjdra3h0Nmd2cjY1In0.SqzkaKalXxQaPhQLjodQcQ';
-
-var ctrlnglat = [{{ ctrlng }}, {{ ctrlat }}];
-
-var map = new mapboxgl.Map({
-    container: 'map',
-    style: 'mapbox://styles/mapbox/satellite-v9',
-    center: ctrlnglat,
-    zoom: 11,
-    hash: true
-});
-
-function setSource(map, color) {
-    try {
-        map.removeLayer('raster-tiles');
-        map.removeSource('raster-tiles');
-    } catch(err) {
-
-    }
-
-    //We add a date to the url to make sure to not cache the tile
-    var rd = new Date();
-
-    map.addLayer({
-        "id": "raster-tiles",
-        "type": "raster",
-        "source": {
-            'type': 'raster',
-            'id': 'raster-tiles',
-            "tiles": ["tiles/" + rd.getTime() + '/' + color + "/{z}/{x}/{y}.png"],
-            "bounds": {{ bounds }},
-            "tileSize": {{ tile_size }}
-        },
-        "minzoom": 0,
-        "maxzoom": 22
+    var map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/satellite-v9',
+        center: ctrlnglat,
+        zoom: 11,
+        hash: true
     });
-}
 
-getBounds(function(bounds) {
-    // for now just use hardcoded formula
+    function setSource(map, color) {
+        if (map.getSource('raster-tiles')) map.removeSource('raster-tiles');
+        if (map.getLayer('raster-tiles')) map.removeLayer('raster-tiles');
+
+        //We add a date to the url to make sure to not cache the tile
+        var rd = new Date();
+
+        map.addSource('raster-tiles', {
+            type: 'raster',
+            tiles: [`tiles/${rd.getTime()}/${color}/{z}/{x}/{y}.png`],
+            bounds: {{ bounds }},
+            minzoom: 0,
+            maxzoom: 22,
+            tileSize: {{ tile_size }}
+        });
+
+        map.addLayer({
+            'id': 'raster-tiles',
+            'type': 'raster',
+            'source': 'raster-tiles'
+        });
+    }
+
     var color = encodeURIComponent("gamma b 1, gamma rg 1");
     var shell = $('#console').terminal(function(command) {
         if (command !== '') {
@@ -92,17 +74,15 @@ getBounds(function(bounds) {
         prompt: '> '
     });
 
-
     map.on('load', function() {
-        bounds = JSON.parse(bounds);
+        const bounds = {{ bounds }};
         map.fitBounds([
             [bounds[0], bounds[1]],
             [bounds[2], bounds[3]]
         ]);
         setSource(map, color);
-
     });
-})
+
 </script>
 </body>
 </html>

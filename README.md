@@ -27,3 +27,13 @@ eg
  » rio glui ~/pxm/test/expected/composite/composite_ca_chilliwack_rgba.tif
 Inspecting /Users/dnomadb/pxm/test/expected/composite/composite_ca_chilliwack_rgba.tif at http://127.0.0.1:5000/
 ```
+
+## Working big file
+If you plan to use `rio-glui` on a large image you may want to create `overviews` before.
+Creating internal overview will make your file bigger but rio-glui will be much faster.
+
+e.g
+```
+rio overview --build 2,4,8,16,32,64,128,256,512 myraster.tif
+rio glui myraster.tif
+```

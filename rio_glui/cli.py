@@ -1,46 +1,50 @@
-from flask import Flask, render_template, request, jsonify, url_for, send_file, abort
-
-import click
-import shutil, tempfile, os
-
-import rasterio as rio
-import numpy as np
-
-from rio_color.operations import parse_operations, gamma, sigmoidal, saturation
-from rio_color.utils import scale_dtype, to_math_type
-
+import logging
+from io import BytesIO
 from functools import lru_cache
 
-from io import StringIO, BytesIO
-from rasterio import transform, windows
+import click
+import numpy as np
 
-from rasterio.warp import reproject, transform_bounds, Resampling, calculate_default_transform
-from rasterio.windows import from_bounds
+from PIL import Image
+from flask import Flask, render_template, jsonify, send_file, abort
 
-import logging
+import mercantile
+import rasterio as rio
+from rasterio.vrt import WarpedVRT
+from rasterio.enums import Resampling
+from rasterio.warp import transform_bounds
+
+from rio_color.operations import parse_operations
+from rio_color.utils import scale_dtype, to_math_type
+
+
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
-import mercantile
-from PIL import Image
-
-
 app = Flask(__name__)
+
 
 class Peeker:
     def __init__(self):
         pass
 
     def start(self, path, img_dimension=512, tile_size=256):
-        self.src = rio.open(path)
+        self.path = path
         self.tile_size = tile_size
-        self.img_dimension= img_dimension
-        self.wgs_bounds = transform_bounds(*[self.src.crs, 'epsg:4326'] + list(self.src.bounds), densify_pts=0)
+        self.img_dimension = img_dimension
+
+        with rio.open(path) as src:
+            self.wgs_bounds = list(transform_bounds(
+                *[src.crs, 'epsg:4326'] +
+                list(src.bounds), densify_pts=0))
+            self.nodatavals = src.nodatavals
+            self.count = src.count
 
     def tile_exists(self, z, x, y):
         mintile = mercantile.tile(self.wgs_bounds[0], self.wgs_bounds[3], z)
         maxtile = mercantile.tile(self.wgs_bounds[2], self.wgs_bounds[1], z)
-        return (x <= maxtile.x + 1) and (x >= mintile.x) and (y <= maxtile.y + 1) and (y >= mintile.y)
+        return (x <= maxtile.x + 1) and (x >= mintile.x) and \
+               (y <= maxtile.y + 1) and (y >= mintile.y)
 
     def get_bounds(self):
         return list(self.wgs_bounds)
@@ -53,31 +57,28 @@ class Peeker:
 
     @lru_cache()
     def get_tile(self, z, x, y):
-        bounds = [c for i in (mercantile.xy(*mercantile.ul(x, y + 1, z)), mercantile.xy(*mercantile.ul(x + 1, y, z))) for c in i]
+        tile = mercantile.Tile(x=x, y=y, z=z)
+        tile_bounds = mercantile.xy_bounds(tile)
 
-        toaffine = transform.from_bounds(*bounds + [self.img_dimension, self.img_dimension])
+        out = np.empty((4, self.img_dimension, self.img_dimension),
+            dtype=np.uint8)
 
-        out = np.empty((4, self.img_dimension, self.img_dimension), dtype=np.uint8)
+        with rio.open(self.path) as src:
+            with WarpedVRT(src, dst_crs='EPSG:3857',
+                resampling=Resampling.bilinear) as vrt:
 
-        for i in range(self.src.count):
+                # boundless=True, should be remove in rio 1.10a
+                window = vrt.window(*tile_bounds, boundless=True, precision=21)
+                matrix = vrt.read(window=window,
+                    out_shape=(3, self.img_dimension, self.img_dimension),
+                    boundless=True, indexes=[1,2,3])
 
-            src_affine, width, height = calculate_default_transform('epsg:3857', self.src.crs, tilesize, tilesize, *bounds)
-            img_bounds = transform_bounds(*['epsg:3857', self.src.crs] + bounds, densify_pts=0)
-            window = from_bounds(*list(img_bounds) + [self.src.transform], boundless=True)
+                out[0:3] = matrix.astype(np.uint8)
 
-            reproject(
-                src.read(i + 1, window=window, out_shape=(height, width), boundless=True).astype(self.src.profile['dtype']),
-                src_transform=src_affine,
-                dst_transform=toaffine,
-                src_crs=self.src.crs,
-                dst_crs="init='epsg:3857'",
-                resampling=Resampling.bilinear)
-
-        if self.src.count == 3:
-            if self.src.nodatavals:
-                out[-1] = np.all(np.dstack(out[:3]) != self.src.nodatavals, axis=2).astype(np.uint8) * 255
-            else:
-                out[-1] = 255
+        if self.nodatavals:
+            out[-1] = np.all(np.dstack(out[:3]) != self.nodatavals, axis=2).astype(np.uint8) * 255
+        else:
+            out[-1] = 255
 
         return out
 
@@ -97,7 +98,12 @@ pk = Peeker()
 
 @app.route('/')
 def main_page():
-    return render_template('preview.html', ctrlat=pk.get_ctr_lat(), ctrlng=pk.get_ctr_lng(), tile_size=pk.tile_size, bounds=pk.wgs_bounds)
+    return render_template(
+        'preview.html',
+        ctrlat=pk.get_ctr_lat(),
+        ctrlng=pk.get_ctr_lng(),
+        tile_size=pk.tile_size,
+        bounds=pk.wgs_bounds)
 
 
 @app.route('/tiles/<rdate>/<color>/<z>/<x>/<y>.png')
@@ -107,7 +113,6 @@ def get_image(color, rdate, z, x, y):
         abort(404)
 
     tilearr = pk.get_tile(z, x, y)
-
     img = apply_color(tilearr, color)
 
     sio = BytesIO()
@@ -116,18 +121,21 @@ def get_image(color, rdate, z, x, y):
 
     return send_file(sio, mimetype='image/png')
 
+
 @app.route('/getbounds', methods=['GET', 'POST'])
 def set_source():
-
     return jsonify(pk.get_bounds())
+
 
 @click.command()
 @click.argument('srcpath', type=click.Path(exists=True))
 @click.option('--shape', type=int, default=512)
 @click.option('--tile-size', type=int, default=512)
 @click.option('--prt', type=int, default=5000,
-            help= "the port of the webserver. Defaults to 5000.")
+              help="the port of the webserver. Defaults to 5000.")
 def glui(srcpath, shape, tile_size, prt):
     pk.start(srcpath, shape, tile_size)
-    click.echo('Inspecting {0} at http://127.0.0.1:{1}/'.format(srcpath, prt), err=True)
+    click.echo('Inspecting {0} at http://127.0.0.1:{1}/'.format(srcpath, prt),
+        err=True)
+    click.launch('http://127.0.0.1:{}/'.format(prt))
     app.run(threaded=True, port=prt)
