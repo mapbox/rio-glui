@@ -2,5 +2,5 @@ click
 rasterio>=1.0a9
 Pillow
 flask
-mercantile
+mercantile>=0.10.0
 rio-color

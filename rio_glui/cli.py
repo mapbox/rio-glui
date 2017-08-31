@@ -1,6 +1,6 @@
 import logging
 from io import BytesIO
-from functools import lru_cache
+from cachetools.func import lru_cache
 
 import click
 import numpy as np
