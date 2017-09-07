@@ -149,4 +149,4 @@ def glui(srcpath, nodata, bidx, shape, tile_size, prt):
 
     pk.start(srcpath, nodata, bands, shape, tile_size)
     click.launch('http://127.0.0.1:{}/'.format(prt))
-    app.run(threaded=True, port=prt, use_reloader=True)
+    app.run(threaded=True, port=prt)
