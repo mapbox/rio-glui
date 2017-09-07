@@ -28,8 +28,9 @@ class Peeker:
     def __init__(self):
         pass
 
-    def start(self, path, img_dimension=512, tile_size=256):
+    def start(self, path, nodata, bands, img_dimension=512, tile_size=256):
         self.path = path
+        self.bands = bands
         self.tile_size = tile_size
         self.img_dimension = img_dimension
 
@@ -37,7 +38,7 @@ class Peeker:
             self.wgs_bounds = list(transform_bounds(
                 *[src.crs, 'epsg:4326'] +
                 list(src.bounds), densify_pts=0))
-            self.nodatavals = src.nodatavals
+            self.nodata = nodata if nodata else src.nodata
             self.count = src.count
 
     def tile_exists(self, z, x, y):
@@ -65,18 +66,20 @@ class Peeker:
 
         with rio.open(self.path) as src:
             with WarpedVRT(src, dst_crs='EPSG:3857',
-                resampling=Resampling.bilinear) as vrt:
+                resampling=Resampling.bilinear,
+                src_nodata=self.nodata,
+                dst_nodata=self.nodata) as vrt:
 
                 # boundless=True, should be remove in rio 1.10a
                 window = vrt.window(*tile_bounds, boundless=True, precision=21)
-                matrix = vrt.read(window=window,
+
+                out[0:3] = vrt.read(window=window,
                     out_shape=(3, self.img_dimension, self.img_dimension),
-                    boundless=True, indexes=[1,2,3])
+                    boundless=True,
+                    indexes=self.bands, fill_value=self.nodata)
 
-                out[0:3] = matrix.astype(np.uint8)
-
-        if self.nodatavals:
-            out[-1] = np.all(np.dstack(out[:3]) != self.nodatavals, axis=2).astype(np.uint8) * 255
+        if self.nodata:
+            out[-1] = np.all(np.dstack(out[:-1]) != self.nodata, axis=2).astype(np.uint8) * 255
         else:
             out[-1] = 255
 
@@ -129,13 +132,21 @@ def set_source():
 
 @click.command()
 @click.argument('srcpath', type=click.Path(exists=True))
+@click.option('--nodata', '-n', type=int)
+@click.option('--bidx', '-b', type=str, default='1,2,3')
 @click.option('--shape', type=int, default=512)
 @click.option('--tile-size', type=int, default=512)
 @click.option('--prt', type=int, default=5000,
               help="the port of the webserver. Defaults to 5000.")
-def glui(srcpath, shape, tile_size, prt):
-    pk.start(srcpath, shape, tile_size)
+def glui(srcpath, nodata, bidx, shape, tile_size, prt):
+
+    bands = [int(b) for b in bidx.split(',')]
+    if len(bands) != 3:
+        click.Exception('invalid bdix format')
+
     click.echo('Inspecting {0} at http://127.0.0.1:{1}/'.format(srcpath, prt),
         err=True)
+
+    pk.start(srcpath, nodata, bands, shape, tile_size)
     click.launch('http://127.0.0.1:{}/'.format(prt))
-    app.run(threaded=True, port=prt)
+    app.run(threaded=True, port=prt, use_reloader=True)
