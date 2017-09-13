@@ -1,18 +1,22 @@
-from functools import lru_cache
-from io import BytesIO
 import logging
+from io import BytesIO
+from cachetools.func import lru_cache
+
+import click
+import numpy as np
 
 from PIL import Image
 from flask import Flask, render_template, jsonify, send_file, abort
+
+import mercantile
+
+import rasterio as rio
 from rasterio import transform
-from rasterio.crs import CRS
-from rasterio.warp import reproject, Resampling, transform_bounds
+from rasterio.vrt import WarpedVRT
+from rasterio.enums import Resampling
+from rasterio.warp import transform_bounds
 from rio_color.operations import parse_operations
 from rio_color.utils import scale_dtype, to_math_type
-import click
-import mercantile
-import numpy as np
-import rasterio as rio
 
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
@@ -24,14 +28,20 @@ class Peeker:
     def __init__(self):
         pass
 
-    def start(self, path, img_dimension=512, tile_size=256):
+    # logging.basicConfig(level=logging.DEBUG)
+
+    def start(self, path, nodata, bands, img_dimension=512, tile_size=256):
         self.path = path
+        self.bands = bands
         self.tile_size = tile_size
         self.img_dimension = img_dimension
+
         with rio.open(path) as src:
-            self.wgs_bounds = transform_bounds(
+            self.wgs_bounds = list(transform_bounds(
                 *[src.crs, 'epsg:4326'] +
-                list(src.bounds), densify_pts=0)
+                list(src.bounds), densify_pts=0))
+            self.nodata = nodata if nodata else src.nodata
+            self.count = src.count
 
     def tile_exists(self, z, x, y):
         mintile = mercantile.tile(self.wgs_bounds[0], self.wgs_bounds[3], z)
@@ -50,40 +60,29 @@ class Peeker:
 
     @lru_cache()
     def get_tile(self, z, x, y):
-        bounds = [c for i in (
-            mercantile.xy(*mercantile.ul(x, y + 1, z)),
-            mercantile.xy(*mercantile.ul(x + 1, y, z))) for c in i]
-        toaffine = transform.from_bounds(
-            *bounds + [self.img_dimension, self.img_dimension])
+        tile = mercantile.Tile(x=x, y=y, z=z)
+        tile_bounds = list(mercantile.xy_bounds(tile))
+        dst_affine = transform.from_bounds(*tile_bounds + [self.img_dimension, self.img_dimension])
+
+        out = np.empty((4, self.img_dimension, self.img_dimension), dtype=np.uint8)
 
         with rio.open(self.path) as src:
-            source_arr = src.read()
-            count = src.count
-            nodatavals = src.nodatavals
-            source_transform = src.transform
-            source_crs = src.crs
+            with WarpedVRT(src, \
+                dst_crs='EPSG:3857', \
+                resampling=Resampling.bilinear, \
+                src_nodata=self.nodata, \
+                dst_nodata=self.nodata, \
+                src_transform=src.transform, \
+                dst_transform=dst_affine, \
+                dst_width=self.img_dimension, \
+                dst_height=self.img_dimension) as vrt:
 
-        dest_arr = np.zeros(
-            (src.count, self.img_dimension, self.img_dimension), dtype=np.uint8)
+                out[:3] = vrt.read(indexes=self.bands)
 
-        reproject(
-            source_arr, dest_arr,
-            src_transform=source_transform,
-            dst_transform=toaffine,
-            src_crs=source_crs,
-            dst_crs=CRS({'init': 'epsg:3857'}),
-            resampling=Resampling.bilinear)
-
-        if count == 3:
-            alpha = np.empty((1, self.img_dimension, self.img_dimension), dtype=np.uint8)
-            out = np.concatenate(dest_arr, alpha)
-            if nodatavals:
-                out[-1] = np.all(dest_arr != nodatavals,
-                                 axis=2).astype(np.uint8) * 255
-            else:
-                out[-1] = 255
+        if self.nodata:
+            out[-1] = np.all(np.dstack(out[:-1]) != self.nodata, axis=2).astype(np.uint8) * 255
         else:
-            out = dest_arr
+            out[-1] = 255
 
         return out
 
@@ -104,8 +103,11 @@ pk = Peeker()
 @app.route('/')
 def main_page():
     return render_template(
-        'preview.html', ctrlat=pk.get_ctr_lat(), ctrlng=pk.get_ctr_lng(),
-        tile_size=pk.tile_size)
+        'preview.html',
+        ctrlat=pk.get_ctr_lat(),
+        ctrlng=pk.get_ctr_lng(),
+        tile_size=pk.tile_size,
+        bounds=pk.wgs_bounds)
 
 
 @app.route('/tiles/<rdate>/<color>/<z>/<x>/<y>.png')
@@ -131,12 +133,21 @@ def set_source():
 
 @click.command()
 @click.argument('srcpath', type=click.Path(exists=True))
+@click.option('--nodata', '-n', type=int)
+@click.option('--bidx', '-b', type=str, default='1,2,3')
 @click.option('--shape', type=int, default=512)
 @click.option('--tile-size', type=int, default=512)
 @click.option('--prt', type=int, default=5000,
               help="the port of the webserver. Defaults to 5000.")
-def glui(srcpath, shape, tile_size, prt):
-    pk.start(srcpath, shape, tile_size)
-    click.echo('Inspecting {0} at http://127.0.0.1:{1}/'.format(srcpath, prt), err=True)
+def glui(srcpath, nodata, bidx, shape, tile_size, prt):
+
+    bands = [int(b) for b in bidx.split(',')]
+    if len(bands) != 3:
+        click.Exception('invalid bdix format')
+
+    click.echo('Inspecting {0} at http://127.0.0.1:{1}/'.format(srcpath, prt),
+        err=True)
+
+    pk.start(srcpath, nodata, bands, shape, tile_size)
     click.launch('http://127.0.0.1:{}/'.format(prt))
     app.run(threaded=True, port=prt)
