@@ -9,14 +9,14 @@ from PIL import Image
 from flask import Flask, render_template, jsonify, send_file, abort
 
 import mercantile
+
 import rasterio as rio
+from rasterio import transform
 from rasterio.vrt import WarpedVRT
 from rasterio.enums import Resampling
 from rasterio.warp import transform_bounds
-
 from rio_color.operations import parse_operations
 from rio_color.utils import scale_dtype, to_math_type
-
 
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
@@ -27,6 +27,8 @@ app = Flask(__name__)
 class Peeker:
     def __init__(self):
         pass
+
+    # logging.basicConfig(level=logging.DEBUG)
 
     def start(self, path, nodata, bands, img_dimension=512, tile_size=256):
         self.path = path
@@ -59,24 +61,23 @@ class Peeker:
     @lru_cache()
     def get_tile(self, z, x, y):
         tile = mercantile.Tile(x=x, y=y, z=z)
-        tile_bounds = mercantile.xy_bounds(tile)
+        tile_bounds = list(mercantile.xy_bounds(tile))
+        dst_affine = transform.from_bounds(*tile_bounds + [self.img_dimension, self.img_dimension])
 
-        out = np.empty((4, self.img_dimension, self.img_dimension),
-            dtype=np.uint8)
+        out = np.empty((4, self.img_dimension, self.img_dimension), dtype=np.uint8)
 
         with rio.open(self.path) as src:
-            with WarpedVRT(src, dst_crs='EPSG:3857',
-                resampling=Resampling.bilinear,
-                src_nodata=self.nodata,
-                dst_nodata=self.nodata) as vrt:
+            with WarpedVRT(src, \
+                dst_crs='EPSG:3857', \
+                resampling=Resampling.bilinear, \
+                src_nodata=self.nodata, \
+                dst_nodata=self.nodata, \
+                src_transform=src.transform, \
+                dst_transform=dst_affine, \
+                dst_width=self.img_dimension, \
+                dst_height=self.img_dimension) as vrt:
 
-                # boundless=True, should be remove in rio 1.10a
-                window = vrt.window(*tile_bounds, boundless=True, precision=21)
-
-                out[0:3] = vrt.read(window=window,
-                    out_shape=(3, self.img_dimension, self.img_dimension),
-                    boundless=True,
-                    indexes=self.bands, fill_value=self.nodata)
+                out[:3] = vrt.read(indexes=self.bands)
 
         if self.nodata:
             out[-1] = np.all(np.dstack(out[:-1]) != self.nodata, axis=2).astype(np.uint8) * 255
