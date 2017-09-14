@@ -87,7 +87,7 @@
     });
 
     map.on('load', function() {
-        const bounds = {{ bounds }};
+        var bounds = {{ bounds }};
         map.fitBounds([
             [bounds[0], bounds[1]],
             [bounds[2], bounds[3]]
