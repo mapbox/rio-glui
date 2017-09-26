@@ -1,3 +1,5 @@
+"""rio_glui.cli"""
+
 import logging
 from io import BytesIO
 from cachetools.func import lru_cache
@@ -28,8 +30,6 @@ class Peeker:
     def __init__(self):
         pass
 
-    # logging.basicConfig(level=logging.DEBUG)
-
     def start(self, path, nodata, bands, img_dimension=512, tile_size=256):
         self.path = path
         self.bands = bands
@@ -46,8 +46,7 @@ class Peeker:
     def tile_exists(self, z, x, y):
         mintile = mercantile.tile(self.wgs_bounds[0], self.wgs_bounds[3], z)
         maxtile = mercantile.tile(self.wgs_bounds[2], self.wgs_bounds[1], z)
-        return (x <= maxtile.x + 1) and (x >= mintile.x) and \
-               (y <= maxtile.y + 1) and (y >= mintile.y)
+        return (x <= maxtile.x + 1) and (x >= mintile.x) and (y <= maxtile.y + 1) and (y >= mintile.y)
 
     def get_bounds(self):
         return list(self.wgs_bounds)
@@ -67,15 +66,15 @@ class Peeker:
         out = np.empty((4, self.img_dimension, self.img_dimension), dtype=np.uint8)
 
         with rio.open(self.path) as src:
-            with WarpedVRT(src, \
-                dst_crs='EPSG:3857', \
-                resampling=Resampling.bilinear, \
-                src_nodata=self.nodata, \
-                dst_nodata=self.nodata, \
-                src_transform=src.transform, \
-                dst_transform=dst_affine, \
-                dst_width=self.img_dimension, \
-                dst_height=self.img_dimension) as vrt:
+            with WarpedVRT(src,
+                           dst_crs='EPSG:3857',
+                           resampling=Resampling.bilinear,
+                           src_nodata=self.nodata,
+                           dst_nodata=self.nodata,
+                           src_transform=src.transform,
+                           dst_transform=dst_affine,
+                           dst_width=self.img_dimension,
+                           dst_height=self.img_dimension) as vrt:
 
                 out[:3] = vrt.read(indexes=self.bands)
 
@@ -145,8 +144,7 @@ def glui(srcpath, nodata, bidx, shape, tile_size, prt):
     if len(bands) != 3:
         click.Exception('invalid bdix format')
 
-    click.echo('Inspecting {0} at http://127.0.0.1:{1}/'.format(srcpath, prt),
-        err=True)
+    click.echo('Inspecting {0} at http://127.0.0.1:{1}/'.format(srcpath, prt), err=True)
 
     pk.start(srcpath, nodata, bands, shape, tile_size)
     click.launch('http://127.0.0.1:{}/'.format(prt))
