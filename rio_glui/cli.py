@@ -13,7 +13,6 @@ from flask import Flask, render_template, jsonify, send_file, abort
 import mercantile
 
 import rasterio as rio
-from rasterio import transform
 from rasterio.vrt import WarpedVRT
 from rasterio.enums import Resampling
 from rasterio.warp import transform_bounds
@@ -22,7 +21,6 @@ from rio_color.utils import scale_dtype, to_math_type
 
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
-
 app = Flask(__name__)
 
 
@@ -60,28 +58,28 @@ class Peeker:
     @lru_cache()
     def get_tile(self, z, x, y):
         tile = mercantile.Tile(x=x, y=y, z=z)
-        tile_bounds = list(mercantile.xy_bounds(tile))
-        dst_affine = transform.from_bounds(*tile_bounds + [self.img_dimension, self.img_dimension])
-
-        out = np.empty((4, self.img_dimension, self.img_dimension), dtype=np.uint8)
+        w, s, e, n = mercantile.xy_bounds(tile)
 
         with rio.open(self.path) as src:
             with WarpedVRT(src,
                            dst_crs='EPSG:3857',
+                           threads=4,
                            resampling=Resampling.bilinear,
                            src_nodata=self.nodata,
-                           dst_nodata=self.nodata,
-                           src_transform=src.transform,
-                           dst_transform=dst_affine,
-                           dst_width=self.img_dimension,
-                           dst_height=self.img_dimension) as vrt:
+                           dst_nodata=self.nodata) as vrt:
+                                window = vrt.window(w, s, e, n, precision=21)
+                                out = vrt.read(window=window,
+                                               boundless=True,
+                                               resampling=Resampling.bilinear,
+                                               out_shape=(self.count, self.img_dimension, self.img_dimension),
+                                               indexes=self.bands).astype(np.uint8)
 
-                out[:3] = vrt.read(indexes=self.bands)
+        mask_shape = (1,) + out.shape[-2:]
+        mask = np.full(mask_shape, 255, dtype=np.uint8)
+        if self.nodata is not None:
+            mask[0] = np.all(np.dstack(out) != self.nodata, axis=2).astype(np.uint8) * 255
 
-        if self.nodata:
-            out[-1] = np.all(np.dstack(out[:-1]) != self.nodata, axis=2).astype(np.uint8) * 255
-        else:
-            out[-1] = 255
+        out = np.concatenate((out, mask))
 
         return out
 
