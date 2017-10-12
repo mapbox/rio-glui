@@ -1,5 +1,5 @@
 click
-rasterio>=1.0a9
+rasterio>=1.0a10
 Pillow
 flask
 mercantile>=0.10.0
