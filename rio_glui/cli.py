@@ -63,10 +63,10 @@ class Peeker:
         with rio.open(self.path) as src:
             with WarpedVRT(src,
                            dst_crs='EPSG:3857',
-                           threads=4,
                            resampling=Resampling.bilinear,
                            src_nodata=self.nodata,
                            dst_nodata=self.nodata) as vrt:
+
                                 window = vrt.window(w, s, e, n, precision=21)
                                 out = vrt.read(window=window,
                                                boundless=True,
@@ -99,12 +99,10 @@ pk = Peeker()
 
 @app.route('/')
 def main_page():
-    return render_template(
-        'preview.html',
-        ctrlat=pk.get_ctr_lat(),
-        ctrlng=pk.get_ctr_lng(),
-        tile_size=pk.tile_size,
-        bounds=pk.wgs_bounds)
+    return render_template('preview.html', ctrlat=pk.get_ctr_lat(),
+                           ctrlng=pk.get_ctr_lng(),
+                           tile_size=pk.tile_size,
+                           bounds=pk.wgs_bounds)
 
 
 @app.route('/tiles/<rdate>/<color>/<z>/<x>/<y>.png')
