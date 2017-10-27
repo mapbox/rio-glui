@@ -1,6 +1,7 @@
-click
-rasterio>=1.0a10
 Pillow
+cachetools
+click
 flask
 mercantile>=0.10.0
+rasterio>=1.0a10
 rio-color
