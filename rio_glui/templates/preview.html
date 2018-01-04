@@ -4,22 +4,29 @@
     <meta charset='utf-8' />
     <title></title>
     <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
-<script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.35.1/mapbox-gl.js'></script>
-    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.35.1/mapbox-gl.css' rel='stylesheet' />
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.39.1/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.39.1/mapbox-gl.css' rel='stylesheet' />
     <style>
         body { margin:0; padding:0; }
         #map { position:absolute; top:0; bottom:200px; width:100%; }
+        .control-box {position: absolute; top:0; right:0;  width:auto; height: 50px; z-index: 1; padding: 10px; background-color: rgba(255,255,255,0.5);}
         #console {position: absolute; bottom: 0px; height: 200px; width: 100%; background-color: black}
     </style>
-    <link href='https://api.mapbox.com/mapbox-assembly/v0.8.1/assembly.min.css' rel='stylesheet'>
-    <script async defer src='https://api.mapbox.com/mapbox-assembly/v0.8.1/assembly.js'></script>
+    <link href="https://api.mapbox.com/mapbox-assembly/v0.17.0/assembly.min.css" rel="stylesheet">
+    <script async defer src='https://api.mapbox.com/mapbox-assembly/v0.17.0/assembly.js'></script>
     <script src="{{url_for('static', filename='jquery-2.1.1.js')}}"></script>
     <script src="{{url_for('static', filename='jquery.terminal.min.js')}}"></script>
-      <link href="{{url_for('static', filename='jquery.terminal.css')}}" rel="stylesheet"/>
+    <link href="{{url_for('static', filename='jquery.terminal.css')}}" rel="stylesheet"/>
 </head>
 <body>
 
-<div id='map'></div>
+<div id='map'>
+  <div class='control-box flex-parent flex-parent--center-cross'>
+    <div class='range range--blue'>
+      <input type='range' min="0" max="100" step="1" value="100" onchange="updateOpacity(this.value)"/>
+    </div>
+  </div>
+</div>
 <div id='console'></div>
 <script>
     mapboxgl.accessToken = 'pk.eyJ1IjoiZG5vbWFkYiIsImEiOiJjaW16aXFsZzUwNHJmdjdra3h0Nmd2cjY1In0.SqzkaKalXxQaPhQLjodQcQ';
@@ -33,6 +40,11 @@
         zoom: 11,
         hash: true
     });
+
+    function updateOpacity(value) {
+        if (!map.getSource('raster-tiles')) return;
+        map.setPaintProperty('raster-tiles', 'raster-opacity', parseInt(value) / 100);
+    }
 
     function setSource(map, color) {
         if (map.getSource('raster-tiles')) map.removeSource('raster-tiles');
