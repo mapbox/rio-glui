@@ -1,7 +1,5 @@
-Pillow
-cachetools
 click
-flask
-mercantile>=0.10.0
-rasterio>=1.0a10
+tornado
+rio-tiler=1.0a4
 rio-color
+mercantile

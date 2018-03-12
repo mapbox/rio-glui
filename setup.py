@@ -1,7 +1,6 @@
-import os
-import sys
+"""setup.py"""
+
 from setuptools import setup, find_packages
-from setuptools.extension import Extension
 
 # Parse the version from the fiona module.
 with open('rio_glui/__init__.py') as f:
@@ -10,19 +9,19 @@ with open('rio_glui/__init__.py') as f:
             version = line.split("=")[1].strip()
             version = version.strip('"')
             version = version.strip("'")
-            break
+            continue
 
-long_description = """"""
+# Runtime requirements.
+inst_reqs = ["tornado", "rio-tiler==1.0a4", "click"]
 
-
-def read(fname):
-    return open(os.path.join(os.path.dirname(__file__), fname)).read()
+extra_reqs = {
+    'test': ['mock', 'pytest', 'pytest-cov', 'codecov']}
 
 
 setup(name='rio-glui',
       version=version,
       description=u"Demo rasterio / Mapbox GL JS demo app",
-      long_description=long_description,
+      long_description="""""",
       classifiers=[],
       keywords='',
       author=u"Damon Burgett",
@@ -32,11 +31,10 @@ setup(name='rio-glui',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
       include_package_data=True,
       zip_safe=False,
-      install_requires=read('requirements.txt').splitlines(),
-      extras_require={
-          'test': ['pytest', 'pytest-cov', 'codecov']},
+      install_requires=inst_reqs,
+      extras_require=extra_reqs,
       entry_points="""
       [rasterio.rio_plugins]
-      glui=rio_glui.cli:glui
+      glui=rio_glui.scripts.cli:glui
       """
       )
