@@ -60,8 +60,14 @@ class CustomType():
 def glui(path, bidx, tiles_format, tiles_dimensions, nodata, alpha, gl_tile_size, port, playground, mapbox_token):
     """
     """
-    raster = RasterTiles(path, bidx=bidx, tiles_size=tiles_dimensions, nodata=nodata, alpha=alpha)
-    app = TileServer(raster, tiles_size=gl_tile_size, tiles_format=tiles_format)
+    raster = RasterTiles(path, bidx=bidx, tiles_size=tiles_dimensions,
+                         nodata=nodata, alpha=alpha)
+
+    min_zoom = raster.get_min_zoom()
+    max_zoom = raster.get_max_zoom()
+
+    app = TileServer(raster, tiles_minzoom=min_zoom, tiles_maxzoom=max_zoom,
+                     tiles_size=gl_tile_size, tiles_format=tiles_format)
 
     if playground:
         url = app.get_playround_url()
