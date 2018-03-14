@@ -56,7 +56,7 @@ class CustomType():
 @click.option('--playground', is_flag=True, help="Launch playground app")
 @click.option('--mapbox-token', type=CustomType.mbxToken,
               default=lambda: os.environ.get('MAPBOX_ACCESS_TOKEN', ''),
-              help="Launch playground app")
+              help="Pass Mapbox token")
 def glui(path, bidx, tiles_format, tiles_dimensions, nodata, alpha, gl_tile_size, port, playground, mapbox_token):
     """
     """
