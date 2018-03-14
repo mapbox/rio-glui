@@ -89,7 +89,7 @@ class RasterTileHandler(web.RequestHandler):
     def initialize(self, raster):
         self.raster = raster
 
-    def _apply_color_operations(img, color_ops):
+    def _apply_color_operations(self, img, color_ops):
         """
         """
         for ops in parse_operations(color_ops):
