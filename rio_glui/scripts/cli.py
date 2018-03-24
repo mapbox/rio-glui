@@ -1,4 +1,4 @@
-"""rio_glui.cli"""
+"""rio_glui.cli."""
 
 import os
 import click
@@ -8,12 +8,15 @@ from rio_glui.server import TileServer
 
 
 class CustomType():
+    """Click CustomType."""
+
     class MbxTokenType(click.ParamType):
-        """Mapbox Token Type
-        """
-        name = 'str'
+        """Mapbox token type."""
+
+        name = 'token'
 
         def convert(self, value, param, ctx):
+            """Validate token."""
             try:
                 if not value:
                     return ''
@@ -26,16 +29,17 @@ class CustomType():
                                            'token at https://www.mapbox.com/account/.')
 
     class BdxParamType(click.ParamType):
-        """Band Index Type
-        """
-        name = 'str'
+        """Band inddex type."""
+
+        name = 'bidx'
 
         def convert(self, value, param, ctx):
+            """Validate and parse band index."""
             try:
                 bands = [int(x) for x in value.split(',')]
                 assert len(bands) in [1, 3]
                 assert all(b > 0 for b in bands)
-                return value
+                return bands
             except (AttributeError, AssertionError):
                 raise click.ClickException('bidx must be a string with 1 or 3 ints comma-separated, '
                                            'representing the band indexes for R,G,B')
@@ -49,8 +53,8 @@ class CustomType():
 @click.option('--bidx', '-b', type=CustomType.bidx, default='1,2,3', help="Raster band index (default: 1,2,3)")
 @click.option('--tiles-format', type=str, default='png', help="Tile image format (default: png)")
 @click.option('--tiles-dimensions', type=int, default=512, help="Dimension of images being served (default: 512)")
-@click.option('--nodata', type=int, help="")
-@click.option('--alpha', type=int, help="")
+@click.option('--nodata', type=int, help='Force mask creation from a given nodata value')
+@click.option('--alpha', type=int, help='Force mask creation from a given alpha band number')
 @click.option('--gl-tile-size', type=int, default=512, help="mapbox-gl tileSize (default: 512)")
 @click.option('--port', type=int, default=8080, help="Webserver port (default: 8080)")
 @click.option('--playground', is_flag=True, help="Launch playground app")
@@ -58,9 +62,8 @@ class CustomType():
               default=lambda: os.environ.get('MAPBOX_ACCESS_TOKEN', ''),
               help="Pass Mapbox token")
 def glui(path, bidx, tiles_format, tiles_dimensions, nodata, alpha, gl_tile_size, port, playground, mapbox_token):
-    """
-    """
-    raster = RasterTiles(path, bidx=bidx, tiles_size=tiles_dimensions,
+    """Rasterio glui cli."""
+    raster = RasterTiles(path, indexes=bidx, tiles_size=tiles_dimensions,
                          nodata=nodata, alpha=alpha)
 
     min_zoom = raster.get_min_zoom()

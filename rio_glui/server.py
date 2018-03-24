@@ -1,4 +1,4 @@
-"""rio_glui.server.py: tornado tile server and template rendered"""
+"""rio_glui.server: tornado tile server and template renderer."""
 
 import os
 from io import BytesIO
@@ -13,16 +13,48 @@ from rio_color.utils import scale_dtype, to_math_type
 
 from tornado import web
 from tornado import gen
+from tornado.ioloop import IOLoop
 from tornado.httpserver import HTTPServer
 from tornado.concurrent import run_on_executor
-from tornado.ioloop import IOLoop
 
 
 class TileServer(object):
-    """creates a very minimal slippy map tile server
-    uses the jupyter notebook tornado.ioloop"""
+    """
+    Creates a very minimal slippy map tile server using tornado.ioloop.
+
+    Attributes
+    ----------
+    raster : RasterTiles
+        Rastertiles object.
+    tiles_format : str, optional
+        Tile image format.
+    tiles_minzoom: int, optional (default: 0)
+        Raster tile minimun zoom.
+    tiles_maxzoom, int, optional (default: 22)
+        Raster tile maximun zoom.
+    tiles_size, int, optional (default: 512)
+        Tile pixel size.
+    port, int, optional (default: 8080)
+        Tornado app default port.
+
+
+    Methods
+    -------
+    get_tiles_url()
+        Get tiles endpoint url.
+    get_template_url()
+        Get simple app template url.
+    get_playround_url()
+        Get playground app template url.
+    start()
+        Start tile server.
+    stop()
+        Stop tile server.
+
+    """
 
     def __init__(self, raster, tiles_format='png', tiles_minzoom=0, tiles_maxzoom=22, tiles_size=512, port=8080):
+        """Initialize Tornado app."""
         self.raster = raster
         self.port = port
         self.server = None
@@ -32,17 +64,20 @@ class TileServer(object):
         self.tiles_maxzoom = tiles_maxzoom
 
     def get_tiles_url(self):
+        """Get tiles endpoint url."""
         tileformat = 'jpg' if self.tiles_format == 'jpeg' else self.tiles_format
         return 'http://127.0.0.1:{}/tiles/{{z}}/{{x}}/{{y}}.{}'.format(self.port, tileformat)
 
     def get_template_url(self):
+        """Get simple app template url."""
         return 'http://127.0.0.1:{}/index.html'.format(self.port)
 
     def get_playround_url(self):
+        """Get playground app template url."""
         return 'http://127.0.0.1:{}/playground.html'.format(self.port)
 
     def start(self):
-
+        """Start tile server."""
         settings = {
             "static_path": os.path.join(os.path.dirname(__file__), "static")}
 
@@ -50,18 +85,17 @@ class TileServer(object):
             raster=self.raster)
 
         template_params = dict(
-            url=self.get_tiles_url(),
-            bounds=self.raster.get_bounds(),
-            center=self.raster.get_center(),
-            min_zoom=self.tiles_minzoom,
-            max_zoom=self.tiles_maxzoom,
-            size=self.tiles_size)
+            tiles_url=self.get_tiles_url(),
+            tiles_bounds=self.raster.get_bounds(),
+            tiles_minzoom=self.tiles_minzoom,
+            tiles_maxzoom=self.tiles_maxzoom,
+            tiles_size=self.tiles_size)
 
         application = web.Application([
             (r'^/tiles/(\d+)/(\d+)/(\d+)\.(\w+)', RasterTileHandler, tile_params),
             (r'^/index.html', IndexTemplate, template_params),
             (r'^/playground.html', PlaygroundTemplate, template_params),
-            (r"/.*", ErrorHandler)], **settings)
+            (r"/.*", InvalidAddress)], **settings)
 
         self.server = HTTPServer(application)
         self.server.listen(self.port)
@@ -72,26 +106,44 @@ class TileServer(object):
         IOLoop.current().start()
 
     def stop(self):
+        """Stop tile server."""
         if self.server:
             self.server.stop()
 
 
-class ErrorHandler(web.RequestHandler):
+class InvalidAddress(web.RequestHandler):
+    """Invalid web requests handler."""
+
     def get(self):
+        """Retunrs 404 error."""
         raise web.HTTPError(404)
 
 
 class RasterTileHandler(web.RequestHandler):
     """
+    RasterTiles requests handler.
+
+    Attributes
+    ----------
+    raster : RasterTiles
+        Rastertiles object.
+
+    Methods
+    -------
+    initialize()
+        Initialize tiles handler.
+    get()
+        Get tile data and mask.
+
     """
+
     executor = futures.ThreadPoolExecutor(max_workers=16)
 
     def initialize(self, raster):
+        """Initialize tiles handler."""
         self.raster = raster
 
     def _apply_color_operations(self, img, color_ops):
-        """
-        """
         for ops in parse_operations(color_ops):
             img = scale_dtype(ops(to_math_type(img)), numpy.uint8)
 
@@ -99,8 +151,6 @@ class RasterTileHandler(web.RequestHandler):
 
     @run_on_executor
     def _get_tile(self, z, x, y, tileformat, color_ops=None):
-        """
-        """
         if tileformat == 'jpg':
             tileformat = 'jpeg'
 
@@ -124,6 +174,7 @@ class RasterTileHandler(web.RequestHandler):
 
     @gen.coroutine
     def get(self, z, x, y, tileformat):
+        """Retunrs tile data and header."""
         self.set_header('Access-Control-Allow-Origin', '*')
         self.set_header('Access-Control-Allow-Methods', 'GET')
         self.set_header('Content-Type', 'image/{}'.format(tileformat))
@@ -135,49 +186,64 @@ class RasterTileHandler(web.RequestHandler):
         self.write(res.getvalue())
 
 
-class IndexTemplate(web.RequestHandler):
+class Template(web.RequestHandler):
     """
+    Template requests handler.
+
+    Attributes
+    ----------
+    tiles_url : str
+        Tiles endpoint url.
+    tiles_bounds : tuple, list
+        Tiles source bounds [maxlng, maxlat, minlng, minlat].
+    tiles_minzoom = tiles_minzoom
+        Tiles source minimun zoom level.
+    tiles_maxzoom = tiles_maxzoom
+        Tiles source maximum zoom level.
+    tiles_size = tiles_size
+        Tiles pixel size.
+
+    Methods
+    -------
+    initialize()
+        Initialize template handler.
+
     """
-    def initialize(self, url, bounds, center, min_zoom, max_zoom, size):
-        self.url = url
-        self.bounds = bounds
-        self.center = center
-        self.min_zoom = min_zoom
-        self.max_zoom = max_zoom
-        self.size = size
+
+    def initialize(self, tiles_url, tiles_bounds, tiles_minzoom, tiles_maxzoom, tiles_size):
+        """Initialize template handler."""
+        self.tiles_url = tiles_url
+        self.tiles_bounds = tiles_bounds
+        self.tiles_minzoom = tiles_minzoom
+        self.tiles_maxzoom = tiles_maxzoom
+        self.tiles_size = tiles_size
+
+
+class IndexTemplate(Template):
+    """Index template."""
 
     def get(self):
+        """Get template."""
         params = dict(
-            tiles_bounds=self.bounds,
-            center=self.center,
-            tiles_url=self.url,
-            zoom=self.min_zoom,
-            tiles_minzoom=self.min_zoom,
-            tiles_maxzoom=self.max_zoom,
-            tiles_size=self.size)
+            tiles_bounds=self.tiles_bounds,
+            tiles_url=self.tiles_url,
+            tiles_minzoom=self.tiles_minzoom,
+            tiles_maxzoom=self.tiles_maxzoom,
+            tiles_size=self.tiles_size)
 
         self.render('templates/index.html', **params)
 
 
-class PlaygroundTemplate(web.RequestHandler):
-    """
-    """
-    def initialize(self, url, bounds, center, min_zoom, max_zoom, size):
-        self.url = url
-        self.bounds = bounds
-        self.center = center
-        self.min_zoom = min_zoom
-        self.max_zoom = max_zoom
-        self.size = size
+class PlaygroundTemplate(Template):
+    """Playground template."""
 
     def get(self):
+        """Get template."""
         params = dict(
-            tiles_bounds=self.bounds,
-            center=self.center,
-            tiles_url=self.url,
-            zoom=self.min_zoom,
-            tiles_minzoom=self.min_zoom,
-            tiles_maxzoom=self.max_zoom,
-            tiles_size=self.size)
+            tiles_bounds=self.tiles_bounds,
+            tiles_url=self.tiles_url,
+            tiles_minzoom=self.tiles_minzoom,
+            tiles_maxzoom=self.tiles_maxzoom,
+            tiles_size=self.tiles_size)
 
         self.render('templates/playground.html', **params)
