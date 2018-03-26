@@ -21,9 +21,9 @@ class RasterTiles(object):
         Raster band indexes to read.
     tiles_size: int, optional (default: 512)
         X/Y tile size to return.
-    nodata, int, optional
+    nodata: int, optional
         nodata value for mask creation.
-    alpha, int, optional
+    alpha: int, optional
         alpha band index for mask creation.
 
     Methods
