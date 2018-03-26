@@ -2,8 +2,6 @@
 
 import os
 import pytest
-#
-# from mock import patch
 
 from rio_glui.raster import RasterTiles, _meters_per_pixel
 

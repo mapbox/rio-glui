@@ -63,6 +63,25 @@ class TileServer(object):
         self.tiles_minzoom = tiles_minzoom
         self.tiles_maxzoom = tiles_maxzoom
 
+        settings = {
+            "static_path": os.path.join(os.path.dirname(__file__), "static")}
+
+        tile_params = dict(
+            raster=self.raster)
+
+        template_params = dict(
+            tiles_url=self.get_tiles_url(),
+            tiles_bounds=self.raster.get_bounds(),
+            tiles_minzoom=self.tiles_minzoom,
+            tiles_maxzoom=self.tiles_maxzoom,
+            tiles_size=self.tiles_size)
+
+        self.app = web.Application([
+            (r'^/tiles/(\d+)/(\d+)/(\d+)\.(\w+)', RasterTileHandler, tile_params),
+            (r'^/index.html', IndexTemplate, template_params),
+            (r'^/playground.html', PlaygroundTemplate, template_params),
+            (r"/.*", InvalidAddress)], **settings)
+
     def get_tiles_url(self):
         """Get tiles endpoint url."""
         tileformat = 'jpg' if self.tiles_format == 'jpeg' else self.tiles_format
@@ -78,27 +97,8 @@ class TileServer(object):
 
     def start(self):
         """Start tile server."""
-        settings = {
-            "static_path": os.path.join(os.path.dirname(__file__), "static")}
-
-        tile_params = dict(
-            raster=self.raster)
-
-        template_params = dict(
-            tiles_url=self.get_tiles_url(),
-            tiles_bounds=self.raster.get_bounds(),
-            tiles_minzoom=self.tiles_minzoom,
-            tiles_maxzoom=self.tiles_maxzoom,
-            tiles_size=self.tiles_size)
-
-        application = web.Application([
-            (r'^/tiles/(\d+)/(\d+)/(\d+)\.(\w+)', RasterTileHandler, tile_params),
-            (r'^/index.html', IndexTemplate, template_params),
-            (r'^/playground.html', PlaygroundTemplate, template_params),
-            (r"/.*", InvalidAddress)], **settings)
-
         is_running = IOLoop.initialized()
-        self.server = HTTPServer(application)
+        self.server = HTTPServer(self.app)
         self.server.listen(self.port)
 
         # Check if there is already one server in place
