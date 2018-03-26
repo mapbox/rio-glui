@@ -61,6 +61,4 @@ target/
 
 .*.swp
 
-rio_color/colorspace.html
-release/venv*
-
+.pytest_cache/

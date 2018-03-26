@@ -6,7 +6,11 @@ import mercantile
 import rasterio
 from rasterio.warp import transform_bounds, calculate_default_transform
 
-from rio_tiler.main import tile
+from rio_tiler.utils import tile_read
+
+
+def _meters_per_pixel(zoom, lat):
+    return (math.cos(lat * math.pi/180.0) * 2 * math.pi * 6378137) / (256 * 2**zoom)
 
 
 class RasterTiles(object):
@@ -51,7 +55,6 @@ class RasterTiles(object):
         self.nodata = nodata
 
         with rasterio.open(path) as src:
-
             try:
                 assert src.driver == 'GTiff'
                 assert src.is_tiled
@@ -61,10 +64,14 @@ class RasterTiles(object):
 
             self.bounds = list(transform_bounds(*[src.crs, 'epsg:4326'] + list(src.bounds), densify_pts=0))
             self.indexes = indexes if indexes is not None else src.indexes
+            self.crs = src.crs
+            self.crs_bounds = src.bounds
+            self.meta = src.meta
+            self.overiew_levels = src.overviews(1)
 
     def get_bounds(self):
         """Get raster bounds (WGS84)."""
-        return list(self.bounds)
+        return self.bounds
 
     def get_center(self):
         """Get raster lon/lat center coordinates."""
@@ -78,14 +85,12 @@ class RasterTiles(object):
         maxtile = mercantile.tile(self.bounds[2], self.bounds[1], z)
         return (x <= maxtile.x + 1) and (x >= mintile.x) and (y <= maxtile.y + 1) and (y >= mintile.y)
 
-    def _meters_per_pixel(self, zoom, lat):
-        return (math.cos(lat * math.pi/180.0) * 2 * math.pi * 6378137) / (256 * 2**zoom)
-
     def get_max_zoom(self, snap=0.5, max_z=23):
         """Calculate raster max zoom level."""
-        with rasterio.open(self.path) as src:
-            dst_affine, w, h = calculate_default_transform(src.crs, 'epsg:3857',
-                                                           src.meta['width'], src.meta['height'], *src.bounds)
+        dst_affine, w, h = calculate_default_transform(self.crs, 'epsg:3857',
+                                                       self.meta['width'],
+                                                       self.meta['height'],
+                                                       *self.crs_bounds)
 
         res_max = max(abs(dst_affine[0]), abs(dst_affine[4]))
 
@@ -94,7 +99,7 @@ class RasterTiles(object):
 
         # loop through the pyramid to file the closest z level
         for z in range(1, max_z):
-            mpp = self._meters_per_pixel(z, 0)
+            mpp = _meters_per_pixel(z, 0)
 
             if (mpp - ((mpp / 2) * snap)) < res_max:
                 tgt_z = z
@@ -104,20 +109,21 @@ class RasterTiles(object):
 
     def get_min_zoom(self, snap=0.5, max_z=23):
         """Calculate raster min zoom level."""
-        with rasterio.open(self.path) as src:
-            dst_affine, w, h = calculate_default_transform(src.crs, 'epsg:3857',
-                                                           src.meta['width'], src.meta['height'], *src.bounds)
+        dst_affine, w, h = calculate_default_transform(self.crs, 'epsg:3857',
+                                                       self.meta['width'],
+                                                       self.meta['height'],
+                                                       *self.crs_bounds)
 
-            res_max = max(abs(dst_affine[0]), abs(dst_affine[4]))
-            max_decim = src.overviews(1)[-1]
-            resolution = max_decim * res_max
+        res_max = max(abs(dst_affine[0]), abs(dst_affine[4]))
+        max_decim = self.overiew_levels[-1]
+        resolution = max_decim * res_max
 
         tgt_z = 0
         mpp = 0.0
 
         # loop through the pyramid to file the closest z level
         for z in list(range(0, 24))[::-1]:
-            mpp = self._meters_per_pixel(z, 0)
+            mpp = _meters_per_pixel(z, 0)
             tgt_z = z
 
             if (mpp - ((mpp / 2) * snap)) > resolution:
@@ -127,5 +133,7 @@ class RasterTiles(object):
 
     def read_tile(self, z, x, y):
         """Read raster tile data and mask."""
-        return tile(self.path, x, y, z, rgb=self.indexes, tilesize=self.tiles_size,
-                    nodata=self.nodata, alpha=self.alpha)
+        mercator_tile = mercantile.Tile(x=x, y=y, z=z)
+        tile_bounds = mercantile.xy_bounds(mercator_tile)
+        return tile_read(self.path, tile_bounds, self.tiles_size, indexes=self.indexes,
+                         nodata=self.nodata, alpha=self.alpha)
