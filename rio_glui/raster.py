@@ -46,7 +46,7 @@ class RasterTiles(object):
     def __init__(self, path, indexes=None, tiles_size=512, nodata=None, alpha=None):
         """Initialize RasterTiles object."""
         self.path = path
-        self.size = tiles_size
+        self.tiles_size = tiles_size
         self.alpha = alpha
         self.nodata = nodata
 
@@ -127,5 +127,5 @@ class RasterTiles(object):
 
     def read_tile(self, z, x, y):
         """Read raster tile data and mask."""
-        return tile(self.path, x, y, z, rgb=self.indexes, tilesize=self.size,
+        return tile(self.path, x, y, z, rgb=self.indexes, tilesize=self.tiles_size,
                     nodata=self.nodata, alpha=self.alpha)
