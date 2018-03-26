@@ -97,13 +97,14 @@ class TileServer(object):
             (r'^/playground.html', PlaygroundTemplate, template_params),
             (r"/.*", InvalidAddress)], **settings)
 
+        is_running = IOLoop.initialized()
         self.server = HTTPServer(application)
         self.server.listen(self.port)
 
         # Check if there is already one server in place
         # else initiate an new one
-        # if not IOLoop.initialized():
-        IOLoop.current().start()
+        if not is_running:
+            IOLoop.current().start()
 
     def stop(self):
         """Stop tile server."""

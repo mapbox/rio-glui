@@ -66,11 +66,12 @@ def glui(path, bidx, tiles_format, tiles_dimensions, nodata, alpha, gl_tile_size
     raster = RasterTiles(path, indexes=bidx, tiles_size=tiles_dimensions,
                          nodata=nodata, alpha=alpha)
 
-    min_zoom = raster.get_min_zoom()
-    max_zoom = raster.get_max_zoom()
-
-    app = TileServer(raster, tiles_minzoom=min_zoom, tiles_maxzoom=max_zoom,
-                     tiles_size=gl_tile_size, tiles_format=tiles_format)
+    app = TileServer(raster,
+                     tiles_minzoom=raster.get_min_zoom(),
+                     tiles_maxzoom=raster.get_max_zoom(),
+                     tiles_size=gl_tile_size,
+                     tiles_format=tiles_format,
+                     port=port)
 
     if playground:
         url = app.get_playround_url()
