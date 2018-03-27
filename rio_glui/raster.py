@@ -51,6 +51,10 @@ class RasterTiles(object):
         """Initialize RasterTiles object."""
         self.path = path
         self.tiles_size = tiles_size
+
+        if nodata is not None and alpha is not None:
+            raise Exception('Incompatible options "alpha" and "nodata"')
+
         self.alpha = alpha
         self.nodata = nodata
 

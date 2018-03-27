@@ -27,6 +27,12 @@ def test_rastertiles_valid():
     assert r.overiew_levels == [2, 4, 8, 16, 32, 64]
 
 
+def test_rastertiles_invalidoptions():
+    """Should error with invalid Cogeo format."""
+    with pytest.raises(Exception):
+        RasterTiles(raster_path, nodata=0, alpha=2)
+
+
 def test_rastertiles_invalidcogeo():
     """Should error with invalid Cogeo format."""
     with pytest.raises(Exception):

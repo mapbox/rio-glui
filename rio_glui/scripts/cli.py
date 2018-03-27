@@ -4,7 +4,7 @@ import os
 import click
 
 from rio_glui.raster import RasterTiles
-from rio_glui.server import TileServer
+from rio_glui import server
 
 
 class CustomType():
@@ -40,7 +40,7 @@ class CustomType():
                 assert len(bands) in [1, 3]
                 assert all(b > 0 for b in bands)
                 return bands
-            except (AttributeError, AssertionError):
+            except (ValueError, AttributeError, AssertionError):
                 raise click.ClickException('bidx must be a string with 1 or 3 ints comma-separated, '
                                            'representing the band indexes for R,G,B')
 
@@ -51,7 +51,8 @@ class CustomType():
 @click.command()
 @click.argument('path', type=str)
 @click.option('--bidx', '-b', type=CustomType.bidx, default='1,2,3', help="Raster band index (default: 1,2,3)")
-@click.option('--tiles-format', type=str, default='png', help="Tile image format (default: png)")
+@click.option('--tiles-format', type=click.Choice(['png', 'jpg', 'webp']),
+              default='png', help="Tile image format (default: png)")
 @click.option('--tiles-dimensions', type=int, default=512, help="Dimension of images being served (default: 512)")
 @click.option('--nodata', type=int, help='Force mask creation from a given nodata value')
 @click.option('--alpha', type=int, help='Force mask creation from a given alpha band number')
@@ -66,12 +67,12 @@ def glui(path, bidx, tiles_format, tiles_dimensions, nodata, alpha, gl_tile_size
     raster = RasterTiles(path, indexes=bidx, tiles_size=tiles_dimensions,
                          nodata=nodata, alpha=alpha)
 
-    app = TileServer(raster,
-                     tiles_minzoom=raster.get_min_zoom(),
-                     tiles_maxzoom=raster.get_max_zoom(),
-                     tiles_size=gl_tile_size,
-                     tiles_format=tiles_format,
-                     port=port)
+    app = server.TileServer(raster,
+                            tiles_minzoom=raster.get_min_zoom(),
+                            tiles_maxzoom=raster.get_max_zoom(),
+                            tiles_size=gl_tile_size,
+                            tiles_format=tiles_format,
+                            port=port)
 
     if playground:
         url = app.get_playround_url()
@@ -82,5 +83,5 @@ def glui(path, bidx, tiles_format, tiles_dimensions, nodata, alpha, gl_tile_size
         url = '{}?access_token={}'.format(url, mapbox_token)
 
     click.launch(url)
-    click.echo('Inspecting {} at {}/'.format(path, url), err=True)
+    click.echo('Inspecting {} at {}'.format(path, url), err=True)
     app.start()
