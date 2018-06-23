@@ -2,20 +2,17 @@
 <html>
 <head>
     <meta charset='utf-8' />
-    <title></title>
+    <title>Rio GL UI - Playground</title>
     <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
 
-    <script src='https://api.mapbox.com/mapbox-gl-js/v0.44.1/mapbox-gl.js'></script>
-  	<link href='https://api.mapbox.com/mapbox-gl-js/v0.44.1/mapbox-gl.css' rel='stylesheet' />
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.46.0/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.46.0/mapbox-gl.css' rel='stylesheet' />
 
-  	<link href="https://api.mapbox.com/mapbox-assembly/v0.20.0/assembly.min.css" rel="stylesheet">
-  	<script async defer src="https://api.mapbox.com/mapbox-assembly/v0.20.0/assembly.js"></script>
+    <link href="https://api.mapbox.com/mapbox-assembly/v0.21.2/assembly.min.css" rel="stylesheet">
+    <script async defer src="https://api.mapbox.com/mapbox-assembly/v0.21.2/assembly.js"></script>
 
     <script src="{{ static_url("jquery-3.3.1.min.js") }}"></script>
     <script src="{{ static_url("jquery.console.js") }}"></script>
-
-    <link href="https://api.mapbox.com/mapbox-assembly/v0.21.0/assembly.min.css" rel="stylesheet">
-    <script async defer src="https://api.mapbox.com/mapbox-assembly/v0.21.0/assembly.js"></script>
 
     <style>
       body { margin:0; padding:0; }
@@ -27,6 +24,8 @@
        { color:#fff; font-family:monospace; }
       #console div.jquery-console-focus span.jquery-console-cursor
        { background:#fefefe; color:#333; font-weight:bold }
+       #console div.jquery-console-message
+        { color:#fff; }
       #console div.jquery-console-message-error
        { color:#ef0505; font-family:sans-serif; font-weight:bold; padding:0.1em; }
       #console div.jquery-console-message-value
@@ -78,9 +77,9 @@
               url
             ],
             'bounds': {{ tiles_bounds }},
-            'minzoom': {{ tiles_minzoom }},
-            'maxzoom': {{ tiles_maxzoom }},
-            'tileSize': {{ tiles_size }}
+            'minzoom': {{ gl_tiles_minzoom }},
+            'maxzoom': {{ gl_tiles_maxzoom }},
+            'tileSize': {{ gl_tiles_size }}
         });
 
         map.addLayer({
