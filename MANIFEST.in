@@ -1,0 +1,2 @@
+include rio_glui/static/*
+include rio_glui/templates/*

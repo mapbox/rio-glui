@@ -12,17 +12,23 @@ with open('rio_glui/__init__.py') as f:
             continue
 
 # Runtime requirements.
-inst_reqs = ["tornado", "rio-tiler>=1.0a5", "click"]
+inst_reqs = ["tornado", "rio-tiler>=1.0b1", "click", "rio-color"]
 
 extra_reqs = {
-    'test': ['mock', 'pytest', 'pytest-cov', 'codecov']}
+    'test': ['mock', 'pytest', 'pytest-cov']}
 
 
 setup(name='rio-glui',
       version=version,
-      description=u"Demo rasterio / Mapbox GL JS demo app",
+      description=u"Inspect CloudOptimized Geotiff using Mapbox GL JS",
       long_description="""""",
-      classifiers=[],
+      classifiers=[
+          'Intended Audience :: Information Technology',
+          'Intended Audience :: Science/Research',
+          'License :: OSI Approved :: BSD License',
+          'Programming Language :: Python :: 3.6',
+          'Programming Language :: Python :: 2.7',
+          'Topic :: Scientific/Engineering :: GIS'],
       keywords='',
       author=u"Damon Burgett",
       author_email='damon@mapbox.com',

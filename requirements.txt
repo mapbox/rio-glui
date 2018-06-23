@@ -1,5 +1,4 @@
 click
 tornado
-rio-tiler>=1.0a5
+rio-tiler==1.0b1
 rio-color
-mercantile
