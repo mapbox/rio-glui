@@ -50,28 +50,42 @@ class CustomType():
 
 @click.command()
 @click.argument('path', type=str)
-@click.option('--bidx', '-b', type=CustomType.bidx, default='1,2,3', help="Raster band index (default: 1,2,3)")
+@click.option('--bidx', '-b', type=CustomType.bidx, default='1,2,3',
+              help="Raster band index (default: 1,2,3)")
 @click.option('--tiles-format', type=click.Choice(['png', 'jpg', 'webp']),
               default='png', help="Tile image format (default: png)")
-@click.option('--tiles-dimensions', type=int, default=512, help="Dimension of images being served (default: 512)")
-@click.option('--nodata', type=int, help='Force mask creation from a given nodata value')
-@click.option('--alpha', type=int, help='Force mask creation from a given alpha band number')
-@click.option('--gl-tile-size', type=int, default=512, help="mapbox-gl tileSize (default: 512)")
-@click.option('--port', type=int, default=8080, help="Webserver port (default: 8080)")
+@click.option('--tiles-dimensions', type=int, default=512,
+              help="Dimension of images being served (default: 512)")
+@click.option('--nodata', type=int,
+              help='Force mask creation from a given nodata value')
+@click.option('--gl-tile-size', type=int,
+              help="mapbox-gl tileSize (default is the same as `tiles-dimensions`)")
+@click.option('--port', type=int, default=8080,
+              help="Webserver port (default: 8080)")
 @click.option('--playground', is_flag=True, help="Launch playground app")
 @click.option('--mapbox-token', type=CustomType.mbxToken,
               default=lambda: os.environ.get('MAPBOX_ACCESS_TOKEN', ''),
               help="Pass Mapbox token")
-def glui(path, bidx, tiles_format, tiles_dimensions, nodata, alpha, gl_tile_size, port, playground, mapbox_token):
+def glui(path,
+         bidx,
+         tiles_format,
+         tiles_dimensions,
+         nodata,
+         gl_tile_size,
+         port,
+         playground,
+         mapbox_token):
     """Rasterio glui cli."""
-    raster = RasterTiles(path, indexes=bidx, tiles_size=tiles_dimensions,
-                         nodata=nodata, alpha=alpha)
+    raster = RasterTiles(path,
+                         indexes=bidx,
+                         tiles_size=tiles_dimensions,
+                         nodata=nodata)
 
     app = server.TileServer(raster,
-                            tiles_minzoom=raster.get_min_zoom(),
-                            tiles_maxzoom=raster.get_max_zoom(),
-                            tiles_size=gl_tile_size,
                             tiles_format=tiles_format,
+                            gl_tiles_size=gl_tile_size,
+                            gl_tiles_minzoom=raster.get_min_zoom(),
+                            gl_tiles_maxzoom=raster.get_max_zoom(),
                             port=port)
 
     if playground:

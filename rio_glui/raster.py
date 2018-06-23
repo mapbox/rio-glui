@@ -27,8 +27,6 @@ class RasterTiles(object):
         X/Y tile size to return.
     nodata: int, optional
         nodata value for mask creation.
-    alpha: int, optional
-        alpha band index for mask creation.
 
     Methods
     -------
@@ -47,15 +45,10 @@ class RasterTiles(object):
 
     """
 
-    def __init__(self, src_path, indexes=None, tiles_size=512, nodata=None, alpha=None):
+    def __init__(self, src_path, indexes=None, tiles_size=512, nodata=None):
         """Initialize RasterTiles object."""
         self.path = src_path
         self.tiles_size = tiles_size
-
-        if nodata is not None and alpha is not None:
-            raise Exception('Incompatible options "alpha" and "nodata"')
-
-        self.alpha = alpha
         self.nodata = nodata
 
         with rasterio.open(src_path) as src:
@@ -141,6 +134,8 @@ class RasterTiles(object):
         """Read raster tile data and mask."""
         mercator_tile = mercantile.Tile(x=x, y=y, z=z)
         tile_bounds = mercantile.xy_bounds(mercator_tile)
-        return tile_read(self.path, tile_bounds, self.tiles_size,
-                         indexes=self.indexes, nodata=self.nodata,
-                         alpha=self.alpha)
+        return tile_read(self.path,
+                         tile_bounds,
+                         self.tiles_size,
+                         indexes=self.indexes,
+                         nodata=self.nodata)

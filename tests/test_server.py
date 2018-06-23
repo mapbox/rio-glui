@@ -18,23 +18,49 @@ def test_TileServer_default():
     assert app.raster == r
     assert app.port == 8080
     assert not app.server
-    assert app.tiles_size == 512
     assert app.tiles_format == 'png'
-    assert app.tiles_minzoom == 0
-    assert app.tiles_maxzoom == 22
+    assert app.gl_tiles_size == 512
+    assert app.gl_tiles_minzoom == 0
+    assert app.gl_tiles_maxzoom == 22
 
 
 def test_TileServer_options():
     """Should work as expected (create TileServer object)."""
     r = RasterTiles(raster_path)
-    app = TileServer(r, tiles_format='jpg', tiles_minzoom=13, tiles_maxzoom=19, tiles_size=256, port=5000)
+    app = TileServer(r, tiles_format='jpg', gl_tiles_minzoom=13, gl_tiles_maxzoom=19, gl_tiles_size=256, port=5000)
     assert app.raster == r
     assert app.port == 5000
     assert not app.server
-    assert app.tiles_size == 256
     assert app.tiles_format == 'jpg'
-    assert app.tiles_minzoom == 13
-    assert app.tiles_maxzoom == 19
+    assert app.gl_tiles_size == 256
+    assert app.gl_tiles_minzoom == 13
+    assert app.gl_tiles_maxzoom == 19
+
+
+def test_TileServer_raster_tilesize():
+    """Should work as expected (create TileServer object)."""
+    r = RasterTiles(raster_path, tiles_size=256)
+    app = TileServer(r)
+    assert app.raster == r
+    assert not app.server
+    assert app.tiles_format == 'png'
+    assert app.gl_tiles_size == 256
+
+
+def test_TileServer_raster_get_bounds():
+    """Should work as expected."""
+    r = RasterTiles(raster_path)
+    app = TileServer(r)
+    assert app.raster == r
+    assert app.get_bounds() == r.get_bounds()
+
+
+def test_TileServer_raster_get_center():
+    """Should work as expected."""
+    r = RasterTiles(raster_path)
+    app = TileServer(r)
+    assert app.raster == r
+    assert app.get_center() == r.get_center()
 
 
 def test_TileServer_get_tiles_url():

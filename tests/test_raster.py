@@ -20,17 +20,10 @@ def test_rastertiles_valid():
     r = RasterTiles(raster_path)
     assert r.path == raster_path
     assert r.tiles_size == 512
-    assert not r.alpha
     assert not r.nodata
     assert r.bounds == [-61.56738281249997, 16.225223624120076, -61.5618896507246, 16.23049792684362]
     assert r.indexes == (1, 2, 3)
     assert r.overiew_levels == [2, 4, 8, 16, 32, 64]
-
-
-def test_rastertiles_invalidoptions():
-    """Should error with invalid Cogeo format."""
-    with pytest.raises(Exception):
-        RasterTiles(raster_path, nodata=0, alpha=2)
 
 
 def test_rastertiles_invalidcogeo():
@@ -45,7 +38,6 @@ def test_rastertiles_valid_indexes_option():
     assert r.path == raster_path
     assert r.indexes == [1]
     assert r.tiles_size == 512
-    assert not r.alpha
     assert not r.nodata
 
 
@@ -54,7 +46,6 @@ def test_rastertiles_valid_size_option():
     r = RasterTiles(raster_path, tiles_size=256)
     assert r.path == raster_path
     assert r.tiles_size == 256
-    assert not r.alpha
     assert not r.nodata
 
 
@@ -63,15 +54,6 @@ def test_rastertiles_valid_nodata_option():
     r = RasterTiles(raster_path, nodata=0)
     assert r.path == raster_path
     assert r.nodata == 0
-    assert not r.alpha
-
-
-def test_rastertiles_valid_alpha_option():
-    """Should work as expected (create rastertiles object)."""
-    r = RasterTiles(raster_path, alpha=3)
-    assert r.path == raster_path
-    assert r.alpha == 3
-    assert not r.nodata
 
 
 def test_rastertiles_get_bounds():
