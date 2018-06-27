@@ -5,8 +5,12 @@ import pytest
 
 from rio_glui.raster import RasterTiles, _meters_per_pixel
 
-raster_path = os.path.join(os.path.dirname(__file__), 'fixtures', '16-21560-29773_small_ycbcr.tif')
-invalid_raster_path = os.path.join(os.path.dirname(__file__), 'fixtures', '16-21560-29773_small.tif')
+raster_path = os.path.join(
+    os.path.dirname(__file__), "fixtures", "16-21560-29773_small_ycbcr.tif"
+)
+invalid_raster_path = os.path.join(
+    os.path.dirname(__file__), "fixtures", "16-21560-29773_small.tif"
+)
 
 
 def test_meters_per_pixel_valid():
@@ -21,7 +25,12 @@ def test_rastertiles_valid():
     assert r.path == raster_path
     assert r.tiles_size == 512
     assert not r.nodata
-    assert r.bounds == [-61.56738281249997, 16.225223624120076, -61.5618896507246, 16.23049792684362]
+    assert r.bounds == [
+        -61.56738281249997,
+        16.225223624120076,
+        -61.5618896507246,
+        16.23049792684362,
+    ]
     assert r.indexes == (1, 2, 3)
     assert r.overiew_levels == [2, 4, 8, 16, 32, 64]
 
@@ -59,7 +68,12 @@ def test_rastertiles_valid_nodata_option():
 def test_rastertiles_get_bounds():
     """Should work as expected (create rastertiles object and get bounds)."""
     r = RasterTiles(raster_path)
-    assert r.get_bounds() == [-61.56738281249997, 16.225223624120076, -61.5618896507246, 16.23049792684362]
+    assert r.get_bounds() == [
+        -61.56738281249997,
+        16.225223624120076,
+        -61.5618896507246,
+        16.23049792684362,
+    ]
 
 
 def test_rastertiles_get_centers():

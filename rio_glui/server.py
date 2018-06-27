@@ -57,13 +57,15 @@ class TileServer(object):
 
     """
 
-    def __init__(self,
-                 raster,
-                 tiles_format='png',
-                 gl_tiles_size=None,
-                 gl_tiles_minzoom=0,
-                 gl_tiles_maxzoom=22,
-                 port=8080):
+    def __init__(
+        self,
+        raster,
+        tiles_format="png",
+        gl_tiles_size=None,
+        gl_tiles_minzoom=0,
+        gl_tiles_maxzoom=22,
+        port=8080,
+    ):
         """Initialize Tornado app."""
         self.raster = raster
         self.port = port
@@ -73,37 +75,42 @@ class TileServer(object):
         self.gl_tiles_minzoom = gl_tiles_minzoom
         self.gl_tiles_maxzoom = gl_tiles_maxzoom
 
-        settings = {
-            "static_path": os.path.join(os.path.dirname(__file__), "static")}
+        settings = {"static_path": os.path.join(os.path.dirname(__file__), "static")}
 
-        tile_params = dict(
-            raster=self.raster)
+        tile_params = dict(raster=self.raster)
 
         template_params = dict(
             tiles_url=self.get_tiles_url(),
             tiles_bounds=self.raster.get_bounds(),
             gl_tiles_size=self.gl_tiles_size,
             gl_tiles_minzoom=self.gl_tiles_minzoom,
-            gl_tiles_maxzoom=self.gl_tiles_maxzoom)
+            gl_tiles_maxzoom=self.gl_tiles_maxzoom,
+        )
 
-        self.app = web.Application([
-            (r'^/tiles/(\d+)/(\d+)/(\d+)\.(\w+)', RasterTileHandler, tile_params),
-            (r'^/index.html', IndexTemplate, template_params),
-            (r'^/playground.html', PlaygroundTemplate, template_params),
-            (r"/.*", InvalidAddress)], **settings)
+        self.app = web.Application(
+            [
+                (r"^/tiles/(\d+)/(\d+)/(\d+)\.(\w+)", RasterTileHandler, tile_params),
+                (r"^/index.html", IndexTemplate, template_params),
+                (r"^/playground.html", PlaygroundTemplate, template_params),
+                (r"/.*", InvalidAddress),
+            ],
+            **settings
+        )
 
     def get_tiles_url(self):
         """Get tiles endpoint url."""
-        tileformat = 'jpg' if self.tiles_format == 'jpeg' else self.tiles_format
-        return 'http://127.0.0.1:{}/tiles/{{z}}/{{x}}/{{y}}.{}'.format(self.port, tileformat)
+        tileformat = "jpg" if self.tiles_format == "jpeg" else self.tiles_format
+        return "http://127.0.0.1:{}/tiles/{{z}}/{{x}}/{{y}}.{}".format(
+            self.port, tileformat
+        )
 
     def get_template_url(self):
         """Get simple app template url."""
-        return 'http://127.0.0.1:{}/index.html'.format(self.port)
+        return "http://127.0.0.1:{}/index.html".format(self.port)
 
     def get_playround_url(self):
         """Get playground app template url."""
-        return 'http://127.0.0.1:{}/playground.html'.format(self.port)
+        return "http://127.0.0.1:{}/playground.html".format(self.port)
 
     def get_bounds(self):
         """Get RasterTiles bounds."""
@@ -172,8 +179,8 @@ class RasterTileHandler(web.RequestHandler):
 
     @run_on_executor
     def _get_tile(self, z, x, y, tileformat, color_ops=None):
-        if tileformat == 'jpg':
-            tileformat = 'jpeg'
+        if tileformat == "jpg":
+            tileformat = "jpeg"
 
         if not self.raster.tile_exists(z, x, y):
             raise web.HTTPError(404)
@@ -185,8 +192,8 @@ class RasterTileHandler(web.RequestHandler):
 
         img = array_to_img(data, mask=mask)
         params = TileProfiles.get(tileformat)
-        if tileformat == 'jpeg':
-            img = img.convert('RGB')
+        if tileformat == "jpeg":
+            img = img.convert("RGB")
 
         sio = BytesIO()
         img.save(sio, tileformat.upper(), **params)
@@ -196,14 +203,18 @@ class RasterTileHandler(web.RequestHandler):
     @gen.coroutine
     def get(self, z, x, y, tileformat):
         """Retunrs tile data and header."""
-        self.set_header('Access-Control-Allow-Origin', '*')
-        self.set_header('Access-Control-Allow-Methods', 'GET')
-        self.set_header('Content-Type', 'image/{}'.format(tileformat))
-        self.set_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Methods", "GET")
+        self.set_header("Content-Type", "image/{}".format(tileformat))
+        self.set_header(
+            "Cache-Control", "no-store, no-cache, must-revalidate, max-age=0"
+        )
 
-        color_ops = self.get_argument('color', None)
+        color_ops = self.get_argument("color", None)
 
-        res = yield self._get_tile(int(z), int(x), int(y), tileformat, color_ops=color_ops)
+        res = yield self._get_tile(
+            int(z), int(x), int(y), tileformat, color_ops=color_ops
+        )
         self.write(res.getvalue())
 
 
@@ -230,12 +241,9 @@ class Template(web.RequestHandler):
 
     """
 
-    def initialize(self,
-                   tiles_url,
-                   tiles_bounds,
-                   gl_tiles_size,
-                   gl_tiles_minzoom,
-                   gl_tiles_maxzoom):
+    def initialize(
+        self, tiles_url, tiles_bounds, gl_tiles_size, gl_tiles_minzoom, gl_tiles_maxzoom
+    ):
         """Initialize template handler."""
         self.tiles_url = tiles_url
         self.tiles_bounds = tiles_bounds
@@ -254,9 +262,10 @@ class IndexTemplate(Template):
             tiles_bounds=self.tiles_bounds,
             gl_tiles_size=self.gl_tiles_size,
             gl_tiles_minzoom=self.gl_tiles_minzoom,
-            gl_tiles_maxzoom=self.gl_tiles_maxzoom)
+            gl_tiles_maxzoom=self.gl_tiles_maxzoom,
+        )
 
-        self.render('templates/index.html', **params)
+        self.render("templates/index.html", **params)
 
 
 class PlaygroundTemplate(Template):
@@ -269,6 +278,7 @@ class PlaygroundTemplate(Template):
             tiles_bounds=self.tiles_bounds,
             gl_tiles_size=self.gl_tiles_size,
             gl_tiles_minzoom=self.gl_tiles_minzoom,
-            gl_tiles_maxzoom=self.gl_tiles_maxzoom)
+            gl_tiles_maxzoom=self.gl_tiles_maxzoom,
+        )
 
-        self.render('templates/playground.html', **params)
+        self.render("templates/playground.html", **params)

@@ -10,7 +10,7 @@ from rio_tiler.utils import tile_read
 
 
 def _meters_per_pixel(zoom, lat):
-    return (math.cos(lat * math.pi/180.0) * 2 * math.pi * 6378137) / (256 * 2**zoom)
+    return (math.cos(lat * math.pi / 180.0) * 2 * math.pi * 6378137) / (256 * 2 ** zoom)
 
 
 class RasterTiles(object):
@@ -53,13 +53,19 @@ class RasterTiles(object):
 
         with rasterio.open(src_path) as src:
             try:
-                assert src.driver == 'GTiff'
+                assert src.driver == "GTiff"
                 assert src.is_tiled
                 assert src.overviews(1)
             except (AttributeError, AssertionError, KeyError):
-                raise Exception('{} is not a valid CloudOptimized Geotiff'.format(src_path))
+                raise Exception(
+                    "{} is not a valid CloudOptimized Geotiff".format(src_path)
+                )
 
-            self.bounds = list(transform_bounds(*[src.crs, 'epsg:4326'] + list(src.bounds), densify_pts=0))
+            self.bounds = list(
+                transform_bounds(
+                    *[src.crs, "epsg:4326"] + list(src.bounds), densify_pts=0
+                )
+            )
             self.indexes = indexes if indexes is not None else src.indexes
             self.crs = src.crs
             self.crs_bounds = src.bounds
@@ -80,15 +86,22 @@ class RasterTiles(object):
         """Check if a mercator tile is within raster bounds."""
         mintile = mercantile.tile(self.bounds[0], self.bounds[3], z)
         maxtile = mercantile.tile(self.bounds[2], self.bounds[1], z)
-        return (x <= maxtile.x + 1) and (x >= mintile.x) and (y <= maxtile.y + 1) and (y >= mintile.y)
+        return (
+            (x <= maxtile.x + 1)
+            and (x >= mintile.x)
+            and (y <= maxtile.y + 1)
+            and (y >= mintile.y)
+        )
 
     def get_max_zoom(self, snap=0.5, max_z=23):
         """Calculate raster max zoom level."""
-        dst_affine, w, h = calculate_default_transform(self.crs,
-                                                       'epsg:3857',
-                                                       self.meta['width'],
-                                                       self.meta['height'],
-                                                       *self.crs_bounds)
+        dst_affine, w, h = calculate_default_transform(
+            self.crs,
+            "epsg:3857",
+            self.meta["width"],
+            self.meta["height"],
+            *self.crs_bounds
+        )
 
         res_max = max(abs(dst_affine[0]), abs(dst_affine[4]))
 
@@ -107,11 +120,13 @@ class RasterTiles(object):
 
     def get_min_zoom(self, snap=0.5, max_z=23):
         """Calculate raster min zoom level."""
-        dst_affine, w, h = calculate_default_transform(self.crs,
-                                                       'epsg:3857',
-                                                       self.meta['width'],
-                                                       self.meta['height'],
-                                                       *self.crs_bounds)
+        dst_affine, w, h = calculate_default_transform(
+            self.crs,
+            "epsg:3857",
+            self.meta["width"],
+            self.meta["height"],
+            *self.crs_bounds
+        )
 
         res_max = max(abs(dst_affine[0]), abs(dst_affine[4]))
         max_decim = self.overiew_levels[-1]
@@ -134,8 +149,10 @@ class RasterTiles(object):
         """Read raster tile data and mask."""
         mercator_tile = mercantile.Tile(x=x, y=y, z=z)
         tile_bounds = mercantile.xy_bounds(mercator_tile)
-        return tile_read(self.path,
-                         tile_bounds,
-                         self.tiles_size,
-                         indexes=self.indexes,
-                         nodata=self.nodata)
+        return tile_read(
+            self.path,
+            tile_bounds,
+            self.tiles_size,
+            indexes=self.indexes,
+            nodata=self.nodata,
+        )
