@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title>Rio GL UI - Playground</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.46.0/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.46.0/mapbox-gl.css' rel='stylesheet' />
+
+    <link href="https://api.mapbox.com/mapbox-assembly/v0.21.2/assembly.min.css" rel="stylesheet">
+    <script async defer src="https://api.mapbox.com/mapbox-assembly/v0.21.2/assembly.js"></script>
+
+    <script src="{{ static_url("jquery-3.3.1.min.js") }}"></script>
+    <script src="{{ static_url("jquery.console.js") }}"></script>
+
+    <style>
+      body { margin:0; padding:0; }
+      #map { position:absolute; top:0; bottom:200px; width:100%; }
+      #console { font-size: 18px }
+      #console div.jquery-console-inner
+       { position: absolute; bottom: 0px; height: 200px; width: 100%; background:#333; padding:0.5em; overflow:auto }
+      #console div.jquery-console-prompt-box
+       { color:#fff; font-family:monospace; }
+      #console div.jquery-console-focus span.jquery-console-cursor
+       { background:#fefefe; color:#333; font-weight:bold }
+       #console div.jquery-console-message
+        { color:#fff; }
+      #console div.jquery-console-message-error
+       { color:#ef0505; font-family:sans-serif; font-weight:bold; padding:0.1em; }
+      #console div.jquery-console-message-value
+       { color:#1ad027; font-family:monospace; padding:0.1em; }
+      #console div.jquery-console-message-type
+       { color:#52666f; font-family:monospace; padding:0.1em; }
+      #console span.jquery-console-prompt-label { font-weight:bold }
+    </style>
+</head>
+<body>
+
+  <div id='map'></div>
+  <div id='console'></div>
+
+  <script>
+    const parseParams = (w_loc) => {
+      const param_list = w_loc.replace('?', '').split('&')
+      const out_params = {}
+      for (let i = 0; i < param_list.length; i++) {
+        let tPar = param_list[i].split('=');
+        out_params[tPar[0]] = tPar[1]
+      }
+      return out_params;
+    }
+    const params = parseParams(window.location.search);
+
+    mapboxgl.accessToken = params.access_token || '';
+
+    const tiles_url = "{{ tiles_url }}";
+
+    var map = new mapboxgl.Map({
+      container: 'map',
+      style: { version: 8, sources: {}, layers: [] },
+      center: [0, 0],
+      zoom: 1,
+      hash: true
+    });
+    map.addControl(new mapboxgl.NavigationControl());
+
+    const setSource = (color, url) => {
+      if (map.getLayer('raster-tiles')) map.removeLayer('raster-tiles');
+      if (map.getSource('raster-tiles')) map.removeSource('raster-tiles');
+
+      if (color !== '') url = `${url}?color=${color}`;
+
+      map.addSource('raster-tiles', {
+            'type': 'raster',
+            'tiles': [
+              url
+            ],
+            'bounds': {{ tiles_bounds }},
+            'minzoom': {{ gl_tiles_minzoom }},
+            'maxzoom': {{ gl_tiles_maxzoom }},
+            'tileSize': {{ gl_tiles_size }}
+        });
+
+        map.addLayer({
+            'id': 'raster-tiles',
+            'type': 'raster',
+            'source': 'raster-tiles'
+        });
+    }
+
+    map.on('load', function() {
+      if (mapboxgl.accessToken !== '') {
+        map.addLayer({
+          'id': 'basemap',
+          'type': 'raster',
+          'source': {'type': 'raster', 'url': `mapbox://mapbox.satellite`}
+        });
+      }
+
+      var bounds = {{ tiles_bounds }};
+      map.fitBounds([[bounds[0], bounds[1]], [bounds[2], bounds[3]]]);
+      setSource('', tiles_url);
+    });
+
+    const usage =[
+      'Usage: https://github.com/mapbox/rio-color#rio_coloroperations',
+      'e.g.: gamma b 1.85, gamma rg 1.95, sigmoidal rgb 35 0.13, saturation 1.15'
+    ];
+
+    $('#console').console({
+      promptLabel: '> ',
+      commandValidate: function(line) {
+        if (line == "") return false;
+        else return true;
+      },
+      commandHandle: function(line) {
+        if (!/(gamma)|(sigmoidal)|(saturation)/.exec(line)) {
+          return [{msg: `=> ${usage.join('\n')}`, className:"jquery-console-message-error"}];
+        } else {
+          setSource(encodeURIComponent(line), tiles_url);
+          return [{msg: `=> ${line}`, className:"jquery-console-message-value"}];
+        }
+      },
+      welcomeMessage: usage.join('\n'),
+      autofocus:true,
+      animateScroll:true,
+      promptHistory:true
+    });
+  </script>
+</body>
+</html>

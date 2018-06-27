@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title>Rio GL UI - Explore</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.46.0/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.46.0/mapbox-gl.css' rel='stylesheet' />
+
+    <style>
+        body { margin:0; padding:0; }
+        #map { position:absolute; top:0; bottom:0; left:0; right:0; }
+    </style>
+</head>
+<body>
+
+<div id='map'></div>
+
+<script>
+
+    const parseParams = (w_loc) => {
+      const param_list = w_loc.replace('?', '').split('&')
+      const out_params = {}
+      for (let i = 0; i < param_list.length; i++) {
+        let tPar = param_list[i].split('=');
+        out_params[tPar[0]] = tPar[1]
+      }
+      return out_params;
+    }
+    const params = parseParams(window.location.search);
+
+    mapboxgl.accessToken = params.access_token || '';
+
+    var map = new mapboxgl.Map({
+        container: 'map',
+        style: { version: 8, sources: {}, layers: [] },
+        center: [0, 0],
+        zoom: 1,
+        hash: true
+    });
+
+
+    map.addControl(new mapboxgl.NavigationControl());
+
+    map.on('load', () => {
+      if (mapboxgl.accessToken !== '') {
+        const basemap = params.mapid || 'mapbox.satellite';
+        map.addLayer({
+          'id': 'basemap',
+          'type': 'raster',
+          'source': {'type': 'raster', 'url': `mapbox://${basemap}`}
+        });
+      }
+
+      map.addLayer({
+        'id': 'raster-tiles',
+        'type': 'raster',
+        'source': {
+          'type': 'raster',
+          'tiles': ["{{ tiles_url }}"],
+          'bounds': {{ tiles_bounds }},
+          'minzoom': {{ gl_tiles_minzoom }},
+          'maxzoom': {{ gl_tiles_maxzoom }},
+          'tileSize': {{ gl_tiles_size }}
+        }
+      });
+
+      const bounds = {{ tiles_bounds }};
+      map.fitBounds([[bounds[0], bounds[1]], [bounds[2], bounds[3]]]);
+    });
+</script>
+</body>
+</html>
