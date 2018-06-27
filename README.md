@@ -59,3 +59,30 @@ To create rio-glui friendly files (CloudOptimized Geotiff) you can use another r
 #### Extras
 
 This plugin also enable raster visualisation in Jupyter Notebook using [`mapboxgl-jupyter`](https://github.com/mapbox/mapboxgl-jupyter)
+
+
+#### Contribution & Devellopement
+
+Issues and pull requests are more than welcome.
+
+###### Dev install & Pull-Request
+
+```
+$ git clone https://github.com/mapbox/rio-glui.git
+$ cd rio-cogeo
+$ pip install -e .[dev]
+```
+
+ *Python3.6 only*
+
+This repo is set to use `pre-commit` to run *flake8*, *pydocstring* and *black* ("uncompromising Python code formatter") when commiting new code.
+
+```
+$ pre-commit install
+$ git add .
+$ git commit -m'my change'
+black....................................................................Passed
+Flake8...................................................................Passed
+Verifying PEP257 Compliance..............................................Passed
+$ git push origin
+```
