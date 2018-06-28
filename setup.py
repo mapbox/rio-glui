@@ -2,6 +2,9 @@
 
 from setuptools import setup, find_packages
 
+with open("README.rst") as f:
+    readme = f.read()
+
 # Parse the version from the fiona module.
 with open("rio_glui/__init__.py") as f:
     for line in f:
@@ -24,7 +27,7 @@ setup(
     name="rio-glui",
     version=version,
     description=u"Inspect CloudOptimized Geotiff using Mapbox GL JS",
-    long_description="""""",
+    long_description=readme,
     classifiers=[
         "Intended Audience :: Information Technology",
         "Intended Audience :: Science/Research",
@@ -33,7 +36,7 @@ setup(
         "Programming Language :: Python :: 2.7",
         "Topic :: Scientific/Engineering :: GIS",
     ],
-    keywords="",
+    keywords="COGEO CloudOptimized Geotiff rasterio Mapbox-GL",
     author=u"Damon Burgett",
     author_email="damon@mapbox.com",
     url="https://github.com/mapbox/rio-glui",
