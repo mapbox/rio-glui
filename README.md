@@ -10,7 +10,7 @@ You can install rio-glui using pip
 
 ```
   $ pip install -U pip
-  $ pip install rio-guil
+  $ pip install rio-glui
 ```
 
 or install from source:
