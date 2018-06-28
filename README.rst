@@ -51,7 +51,7 @@ Usage
     --playground                   Launch playground app
     --mapbox-token TOKEN           Pass Mapbox token
     --help                         Show this message and exit.
-  =
+
 
 Explore COG hosted on aws
 
