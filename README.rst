@@ -62,7 +62,7 @@ Explore COG hosted on aws
 
 **Playground**
 
-The **--playground** option opens a *playgroud* template where you an interact with the data to apply *rio-color formula*.
+The **--playground** option opens a *playground* template where you an interact with the data to apply *rio-color formula*.
 
 
 Creating CloudOptimized Geotiff
