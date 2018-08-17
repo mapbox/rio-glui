@@ -1,12 +1,13 @@
 """rio_glui.server: tornado tile server and template renderer."""
 
 import os
+import logging
 from io import BytesIO
 from concurrent import futures
 
 import numpy
 
-from rio_tiler.utils import array_to_img
+from rio_tiler.utils import array_to_img, linear_rescale, get_colormap
 from rio_tiler import profiles as TileProfiles
 from rio_color.operations import parse_operations
 from rio_color.utils import scale_dtype, to_math_type
@@ -16,6 +17,9 @@ from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.httpserver import HTTPServer
 from tornado.concurrent import run_on_executor
+
+
+logger = logging.getLogger(__name__)
 
 
 class TileServer(object):
@@ -60,6 +64,8 @@ class TileServer(object):
     def __init__(
         self,
         raster,
+        scale=None,
+        colormap=None,
         tiles_format="png",
         gl_tiles_size=None,
         gl_tiles_minzoom=0,
@@ -77,7 +83,10 @@ class TileServer(object):
 
         settings = {"static_path": os.path.join(os.path.dirname(__file__), "static")}
 
-        tile_params = dict(raster=self.raster)
+        if colormap:
+            colormap = get_colormap(colormap)
+
+        tile_params = dict(raster=self.raster, scale=scale, colormap=colormap)
 
         template_params = dict(
             tiles_url=self.get_tiles_url(),
@@ -167,9 +176,11 @@ class RasterTileHandler(web.RequestHandler):
 
     executor = futures.ThreadPoolExecutor(max_workers=16)
 
-    def initialize(self, raster):
+    def initialize(self, raster, scale=None, colormap=None):
         """Initialize tiles handler."""
         self.raster = raster
+        self.scale = scale
+        self.colormap = colormap
 
     def _apply_color_operations(self, img, color_ops):
         for ops in parse_operations(color_ops):
@@ -187,10 +198,31 @@ class RasterTileHandler(web.RequestHandler):
 
         data, mask = self.raster.read_tile(z, x, y)
 
+        if data.dtype != numpy.uint8:
+            if not self.scale:
+                logger.warning("Data rescaled to byte using min/max data type values")
+                dtype_min = numpy.iinfo(data.dtype).min
+                dtype_max = numpy.iinfo(data.dtype).max
+                self.scale = ((dtype_min, dtype_max),) * len(self.raster.indexes)
+
+            if len(self.scale) != len(self.raster.indexes):
+                self.scale *= len(self.raster.indexes)
+
+            for bdx in range(len(self.raster.indexes)):
+                data[bdx] = numpy.where(
+                    mask,
+                    linear_rescale(
+                        data[bdx], in_range=self.scale[bdx], out_range=[0, 255]
+                    ),
+                    0,
+                )
+
+                data = data.astype(numpy.uint8)
+
         if color_ops:
             data = self._apply_color_operations(data, color_ops)
 
-        img = array_to_img(data, mask=mask)
+        img = array_to_img(data, mask=mask, color_map=self.colormap)
         params = TileProfiles.get(tileformat)
         if tileformat == "jpeg":
             img = img.convert("RGB")

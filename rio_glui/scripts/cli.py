@@ -57,13 +57,9 @@ class CustomType:
 
 @click.command()
 @click.argument("path", type=str)
-@click.option(
-    "--bidx",
-    "-b",
-    type=CustomType.bidx,
-    default="1,2,3",
-    help="Raster band index (default: 1,2,3)",
-)
+@click.option("--bidx", "-b", type=CustomType.bidx, help="Raster band index")
+@click.option("--scale", type=int, multiple=True, nargs=2, help="")
+@click.option("--colormap", type=click.Choice(["cfastie", "schwarzwald"]), help="")
 @click.option(
     "--tiles-format",
     type=click.Choice(["png", "jpg", "webp"]),
@@ -95,6 +91,8 @@ class CustomType:
 def glui(
     path,
     bidx,
+    scale,
+    colormap,
     tiles_format,
     tiles_dimensions,
     nodata,
@@ -103,11 +101,17 @@ def glui(
     playground,
     mapbox_token,
 ):
+    """rio glui main command."""
+    if scale and len(scale) not in [1, 3]:
+        raise click.ClickException("Invalid number of scale values")
+
     """Rasterio glui cli."""
     raster = RasterTiles(path, indexes=bidx, tiles_size=tiles_dimensions, nodata=nodata)
 
     app = server.TileServer(
         raster,
+        scale=scale,
+        colormap=colormap,
         tiles_format=tiles_format,
         gl_tiles_size=gl_tile_size,
         gl_tiles_minzoom=raster.get_min_zoom(),
