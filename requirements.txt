@@ -1,4 +1,4 @@
 click
-tornado
-rio-tiler==1.0b1
+tornado==4.5.3
+rio-tiler==1.0rc1
 rio-color

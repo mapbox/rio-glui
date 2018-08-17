@@ -15,7 +15,7 @@ with open("rio_glui/__init__.py") as f:
             continue
 
 # Runtime requirements.
-inst_reqs = ["tornado", "rio-tiler>=1.0b1", "click", "rio-color"]
+inst_reqs = ["tornado==4.5.3", "rio-tiler>=1.0rc1", "click", "rio-color"]
 
 extra_reqs = {
     "test": ["mock", "pytest", "pytest-cov"],
