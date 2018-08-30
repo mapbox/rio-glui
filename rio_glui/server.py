@@ -202,13 +202,10 @@ class RasterTileHandler(web.RequestHandler):
             data = numpy.expand_dims(data, axis=0)
 
         if self.scale:
-            scale = numpy.array(self.scale)
-            if len(scale.shape) == 1:
-                scale = numpy.expand_dims(scale, axis=0)
-
             nbands = data.shape[0]
-            if scale.shape[0] != nbands:
-                scale = (list(scale),) * nbands
+            scale = self.scale
+            if len(scale) != nbands:
+                scale = scale * nbands
 
             for bdx in range(nbands):
                 data[bdx] = numpy.where(
