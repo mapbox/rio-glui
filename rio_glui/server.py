@@ -198,26 +198,26 @@ class RasterTileHandler(web.RequestHandler):
 
         data, mask = self.raster.read_tile(z, x, y)
 
-        if data.dtype != numpy.uint8:
-            if not self.scale:
-                logger.warning("Data rescaled to byte using min/max data type values")
-                dtype_min = numpy.iinfo(data.dtype).min
-                dtype_max = numpy.iinfo(data.dtype).max
-                self.scale = ((dtype_min, dtype_max),) * len(self.raster.indexes)
+        if len(data.shape) == 2:
+            data = numpy.expand_dims(data, axis=0)
 
-            if len(self.scale) != len(self.raster.indexes):
-                self.scale *= len(self.raster.indexes)
+        if self.scale:
+            scale = numpy.array(self.scale)
+            if len(scale.shape) == 1:
+                scale = numpy.expand_dims(scale, axis=0)
 
-            for bdx in range(len(self.raster.indexes)):
+            nbands = data.shape[0]
+            if scale.shape[0] != nbands:
+                scale = (list(scale),) * nbands
+
+            for bdx in range(nbands):
                 data[bdx] = numpy.where(
                     mask,
-                    linear_rescale(
-                        data[bdx], in_range=self.scale[bdx], out_range=[0, 255]
-                    ),
+                    linear_rescale(data[bdx], in_range=scale[bdx], out_range=[0, 255]),
                     0,
                 )
 
-                data = data.astype(numpy.uint8)
+            data = data.astype(numpy.uint8)
 
         if color_ops:
             data = self._apply_color_operations(data, color_ops)

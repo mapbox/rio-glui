@@ -101,11 +101,10 @@ def glui(
     playground,
     mapbox_token,
 ):
-    """rio glui main command."""
+    """Rasterio glui cli."""
     if scale and len(scale) not in [1, 3]:
         raise click.ClickException("Invalid number of scale values")
 
-    """Rasterio glui cli."""
     raster = RasterTiles(path, indexes=bidx, tiles_size=tiles_dimensions, nodata=nodata)
 
     app = server.TileServer(
