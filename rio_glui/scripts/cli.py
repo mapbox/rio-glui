@@ -58,8 +58,20 @@ class CustomType:
 @click.command()
 @click.argument("path", type=str)
 @click.option("--bidx", "-b", type=CustomType.bidx, help="Raster band index")
-@click.option("--scale", type=int, multiple=True, nargs=2, help="")
-@click.option("--colormap", type=click.Choice(["cfastie", "schwarzwald"]), help="")
+@click.option(
+    "--scale",
+    type=int,
+    multiple=True,
+    nargs=2,
+    help="Min and Max data bounds to rescale data from. "
+    "Form multiband you can either provide use '--scale 0 1000' or "
+    "'--scale 0 1000 --scale 0 500 --scale 0 1500'",
+)
+@click.option(
+    "--colormap",
+    type=click.Choice(["cfastie", "schwarzwald"]),
+    help=" Rio-tiler compatible colormap name",
+)
 @click.option(
     "--tiles-format",
     type=click.Choice(["png", "jpg", "webp"]),
