@@ -41,17 +41,17 @@ Usage
     Rasterio glui cli.
 
   Options:
-    -b, --bidx BIDX                Raster band index (default: 1,2,3)
-    --tiles-format [png|jpg|webp]  Tile image format (default: png)
-    --tiles-dimensions INTEGER     Dimension of images being served (default:
-                                   512)
-    --nodata INTEGER               Force mask creation from a given nodata value
-    --gl-tile-size INTEGER         mapbox-gl tileSize (default: 512)
-    --port INTEGER                 Webserver port (default: 8080)
-    --playground                   Launch playground app
-    --mapbox-token TOKEN           Pass Mapbox token
-    --help                         Show this message and exit.
-
+  -b, --bidx BIDX                   Raster band index
+  --scale INTEGER Min Max           Min and Max data bounds to rescale data from.
+  --colormap [cfastie|schwarzwald]  Rio-tiler compatible colormap name ('cfastie' or 'schwarzwald')
+  --tiles-format [png|jpg|webp]     Tile image format (default: png)
+  --tiles-dimensions INTEGER        Dimension of images being served (default: 512)
+  --nodata INTEGER                  Force mask creation from a given nodata value
+  --gl-tile-size INTEGER            mapbox-gl tileSize (default is the same as `tiles-dimensions`)
+  --port INTEGER                    Webserver port (default: 8080)
+  --playground                      Launch playground app
+  --mapbox-token TOKEN              Pass Mapbox token
+  --help                            Show this message and exit.
 
 Explore COG hosted on aws
 

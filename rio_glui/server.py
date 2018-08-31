@@ -32,6 +32,11 @@ class TileServer(object):
         Rastertiles object.
     tiles_format : str, optional
         Tile image format.
+    scale : tuple, optional
+        Min and Max data bounds to rescale data from.
+        Must be in the form of "((min, max), (min, max), (min, max))" or "((min, max),)"
+    colormap: str, optional
+        rio-tiler compatible colormap name ('cfastie' or 'schwarzwald')
     gl_tiles_size, int, optional
         Tile pixel size. (only for templates)
     gl_tiles_minzoom: int, optional (default: 0)
@@ -235,10 +240,7 @@ class RasterTileHandler(web.RequestHandler):
         self.set_header("Access-Control-Allow-Origin", "*")
         self.set_header("Access-Control-Allow-Methods", "GET")
         self.set_header("Content-Type", "image/{}".format(tileformat))
-        self.set_header(
-            "Cache-Control", "no-store, no-cache, must-revalidate, max-age=0"
-        )
-
+        self.set_header("Cache-Control", "no-store, no-cache, must-revalidate")
         color_ops = self.get_argument("color", None)
 
         res = yield self._get_tile(
