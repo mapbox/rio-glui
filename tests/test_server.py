@@ -2,7 +2,11 @@
 
 import os
 
+import numpy
 from tornado.testing import AsyncHTTPTestCase
+
+import mercantile
+from rio_tiler.utils import tile_read
 
 from rio_glui.raster import RasterTiles
 from rio_glui.server import TileServer
@@ -10,6 +14,7 @@ from rio_glui.server import TileServer
 raster_path = os.path.join(
     os.path.dirname(__file__), "fixtures", "16-21560-29773_small_ycbcr.tif"
 )
+raster_ndvi_path = os.path.join(os.path.dirname(__file__), "fixtures", "ndvi_cogeo.tif")
 invalid_raster_path = os.path.join(
     os.path.dirname(__file__), "fixtures", "16-21560-29773_small.tif"
 )
@@ -26,6 +31,28 @@ def test_TileServer_default():
     assert app.gl_tiles_size == 512
     assert app.gl_tiles_minzoom == 0
     assert app.gl_tiles_maxzoom == 22
+
+
+def test_TileServer_1b():
+    """Should work as expected (create TileServer object)."""
+    r = RasterTiles(raster_ndvi_path)
+    app = TileServer(
+        r,
+        tiles_format="jpg",
+        gl_tiles_minzoom=13,
+        gl_tiles_maxzoom=19,
+        gl_tiles_size=256,
+        scale=((-1, 1),),
+        colormap="cfastie",
+        port=5000,
+    )
+    assert app.raster == r
+    assert app.port == 5000
+    assert not app.server
+    assert app.tiles_format == "jpg"
+    assert app.gl_tiles_size == 256
+    assert app.gl_tiles_minzoom == 13
+    assert app.gl_tiles_maxzoom == 19
 
 
 def test_TileServer_options():
@@ -143,3 +170,70 @@ class TestHandlers(AsyncHTTPTestCase):
         """Should find the template."""
         response = self.fetch("/playground.html")
         self.assertEqual(response.code, 200)
+
+
+class TestHandlersRescale(AsyncHTTPTestCase):
+    """Test tornado handlers."""
+
+    def get_app(self):
+        """Initialize app."""
+        r = RasterTiles(raster_path)
+        return TileServer(r, scale=((1, 240),)).app
+
+    def test_tile(self):
+        """Should return tile buffer."""
+        response = self.fetch("/tiles/18/86240/119094.png")
+        self.assertEqual(response.code, 200)
+        self.assertTrue(response.buffer)
+        self.assertEqual(response.headers["Content-Type"], "image/png")
+
+
+class TestHandlers1B(AsyncHTTPTestCase):
+    """Test tornado handlers."""
+
+    def get_app(self):
+        """Initialize app."""
+        r = RasterTiles(raster_ndvi_path, tiles_size=32)
+        return TileServer(r, gl_tiles_size=32, scale=((-1, 1),), colormap="cfastie").app
+
+    def test_tile(self):
+        """Should return tile buffer."""
+        response = self.fetch("/tiles/9/142/205.png")
+        self.assertEqual(response.code, 200)
+        self.assertTrue(response.buffer)
+        self.assertEqual(response.headers["Content-Type"], "image/png")
+
+
+class CustomRaster(RasterTiles):
+    """Custom RasterTiles."""
+
+    def read_tile(self, z, x, y):
+        """Read raster tile data and mask."""
+        mercator_tile = mercantile.Tile(x=x, y=y, z=z)
+        tile_bounds = mercantile.xy_bounds(mercator_tile)
+
+        data, mask = tile_read(
+            self.path,
+            tile_bounds,
+            self.tiles_size,
+            indexes=self.indexes,
+            nodata=self.nodata,
+        )
+        data = (data[0] + data[1]) / 2
+        return data.astype(numpy.uint8), mask
+
+
+class TestHandlersCustom(AsyncHTTPTestCase):
+    """Test tornado handlers."""
+
+    def get_app(self):
+        """Initialize app."""
+        r = CustomRaster(raster_path)
+        return TileServer(r).app
+
+    def test_tile(self):
+        """Should return tile buffer."""
+        response = self.fetch("/tiles/18/86240/119094.png")
+        self.assertEqual(response.code, 200)
+        self.assertTrue(response.buffer)
+        self.assertEqual(response.headers["Content-Type"], "image/png")

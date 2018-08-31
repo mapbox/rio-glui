@@ -1,12 +1,13 @@
 """rio_glui.server: tornado tile server and template renderer."""
 
 import os
+import logging
 from io import BytesIO
 from concurrent import futures
 
 import numpy
 
-from rio_tiler.utils import array_to_img
+from rio_tiler.utils import array_to_img, linear_rescale, get_colormap
 from rio_tiler import profiles as TileProfiles
 from rio_color.operations import parse_operations
 from rio_color.utils import scale_dtype, to_math_type
@@ -16,6 +17,9 @@ from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.httpserver import HTTPServer
 from tornado.concurrent import run_on_executor
+
+
+logger = logging.getLogger(__name__)
 
 
 class TileServer(object):
@@ -28,6 +32,11 @@ class TileServer(object):
         Rastertiles object.
     tiles_format : str, optional
         Tile image format.
+    scale : tuple, optional
+        Min and Max data bounds to rescale data from.
+        Must be in the form of "((min, max), (min, max), (min, max))" or "((min, max),)"
+    colormap: str, optional
+        rio-tiler compatible colormap name ('cfastie' or 'schwarzwald')
     gl_tiles_size, int, optional
         Tile pixel size. (only for templates)
     gl_tiles_minzoom: int, optional (default: 0)
@@ -60,6 +69,8 @@ class TileServer(object):
     def __init__(
         self,
         raster,
+        scale=None,
+        colormap=None,
         tiles_format="png",
         gl_tiles_size=None,
         gl_tiles_minzoom=0,
@@ -77,7 +88,10 @@ class TileServer(object):
 
         settings = {"static_path": os.path.join(os.path.dirname(__file__), "static")}
 
-        tile_params = dict(raster=self.raster)
+        if colormap:
+            colormap = get_colormap(colormap)
+
+        tile_params = dict(raster=self.raster, scale=scale, colormap=colormap)
 
         template_params = dict(
             tiles_url=self.get_tiles_url(),
@@ -167,9 +181,11 @@ class RasterTileHandler(web.RequestHandler):
 
     executor = futures.ThreadPoolExecutor(max_workers=16)
 
-    def initialize(self, raster):
+    def initialize(self, raster, scale=None, colormap=None):
         """Initialize tiles handler."""
         self.raster = raster
+        self.scale = scale
+        self.colormap = colormap
 
     def _apply_color_operations(self, img, color_ops):
         for ops in parse_operations(color_ops):
@@ -187,10 +203,28 @@ class RasterTileHandler(web.RequestHandler):
 
         data, mask = self.raster.read_tile(z, x, y)
 
+        if len(data.shape) == 2:
+            data = numpy.expand_dims(data, axis=0)
+
+        if self.scale:
+            nbands = data.shape[0]
+            scale = self.scale
+            if len(scale) != nbands:
+                scale = scale * nbands
+
+            for bdx in range(nbands):
+                data[bdx] = numpy.where(
+                    mask,
+                    linear_rescale(data[bdx], in_range=scale[bdx], out_range=[0, 255]),
+                    0,
+                )
+
+            data = data.astype(numpy.uint8)
+
         if color_ops:
             data = self._apply_color_operations(data, color_ops)
 
-        img = array_to_img(data, mask=mask)
+        img = array_to_img(data, mask=mask, color_map=self.colormap)
         params = TileProfiles.get(tileformat)
         if tileformat == "jpeg":
             img = img.convert("RGB")
@@ -206,10 +240,7 @@ class RasterTileHandler(web.RequestHandler):
         self.set_header("Access-Control-Allow-Origin", "*")
         self.set_header("Access-Control-Allow-Methods", "GET")
         self.set_header("Content-Type", "image/{}".format(tileformat))
-        self.set_header(
-            "Cache-Control", "no-store, no-cache, must-revalidate, max-age=0"
-        )
-
+        self.set_header("Cache-Control", "no-store, no-cache, must-revalidate")
         color_ops = self.get_argument("color", None)
 
         res = yield self._get_tile(
