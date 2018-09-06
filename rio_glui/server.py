@@ -57,7 +57,7 @@ class TileServer(object):
         Get raster bounds
     get_center()
         Get raster center
-    get_playround_url()
+    get_playground_url()
         Get playground app template url.
     start()
         Start tile server.
@@ -122,7 +122,7 @@ class TileServer(object):
         """Get simple app template url."""
         return "http://127.0.0.1:{}/index.html".format(self.port)
 
-    def get_playround_url(self):
+    def get_playground_url(self):
         """Get playground app template url."""
         return "http://127.0.0.1:{}/playground.html".format(self.port)
 
