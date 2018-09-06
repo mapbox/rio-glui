@@ -131,7 +131,7 @@ def glui(
     )
 
     if playground:
-        url = app.get_playround_url()
+        url = app.get_playground_url()
     else:
         url = app.get_template_url()
 

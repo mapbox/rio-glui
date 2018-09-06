@@ -115,11 +115,11 @@ def test_TileServer_get_template_url():
     assert app.get_template_url() == "http://127.0.0.1:8080/index.html"
 
 
-def test_TileServer_get_playround_url():
+def test_TileServer_get_playground_url():
     """Should work as expected (create TileServer object and get playground url)."""
     r = RasterTiles(raster_path)
     app = TileServer(r)
-    assert app.get_playround_url() == "http://127.0.0.1:8080/playground.html"
+    assert app.get_playground_url() == "http://127.0.0.1:8080/playground.html"
 
 
 class TestHandlers(AsyncHTTPTestCase):
