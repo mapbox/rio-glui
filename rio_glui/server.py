@@ -7,8 +7,8 @@ from concurrent import futures
 
 import numpy
 
-from rio_tiler.utils import array_to_img, linear_rescale, get_colormap
-from rio_tiler import profiles as TileProfiles
+from rio_tiler.utils import array_to_image, linear_rescale, get_colormap
+from rio_tiler.profiles import img_profiles
 from rio_color.operations import parse_operations
 from rio_color.utils import scale_dtype, to_math_type
 
@@ -89,7 +89,7 @@ class TileServer(object):
         settings = {"static_path": os.path.join(os.path.dirname(__file__), "static")}
 
         if colormap:
-            colormap = get_colormap(colormap)
+            colormap = get_colormap(name=colormap, format="gdal")
 
         tile_params = dict(raster=self.raster, scale=scale, colormap=colormap)
 
@@ -224,15 +224,15 @@ class RasterTileHandler(web.RequestHandler):
         if color_ops:
             data = self._apply_color_operations(data, color_ops)
 
-        img = array_to_img(data, mask=mask, color_map=self.colormap)
-        params = TileProfiles.get(tileformat)
-        if tileformat == "jpeg":
-            img = img.convert("RGB")
+        options = img_profiles.get(tileformat, {})
 
-        sio = BytesIO()
-        img.save(sio, tileformat.upper(), **params)
-        sio.seek(0)
-        return sio
+        return BytesIO(array_to_image(
+            data,
+            mask=mask,
+            color_map=self.colormap,
+            img_format=tileformat,
+            **options
+        ))
 
     @gen.coroutine
     def get(self, z, x, y, tileformat):
