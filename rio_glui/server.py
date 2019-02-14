@@ -226,13 +226,15 @@ class RasterTileHandler(web.RequestHandler):
 
         options = img_profiles.get(tileformat, {})
 
-        return BytesIO(array_to_image(
-            data,
-            mask=mask,
-            color_map=self.colormap,
-            img_format=tileformat,
-            **options
-        ))
+        return BytesIO(
+            array_to_image(
+                data,
+                mask=mask,
+                color_map=self.colormap,
+                img_format=tileformat,
+                **options
+            )
+        )
 
     @gen.coroutine
     def get(self, z, x, y, tileformat):
