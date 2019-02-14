@@ -1,0 +1,4 @@
+1.0.6 (2019-02-14)
+------------------
+- update for rio-tiler >= 1.0 (#35)
+- Add non-integer nodata option and add better test
