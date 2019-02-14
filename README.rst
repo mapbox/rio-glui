@@ -2,8 +2,11 @@
 rio-glui
 ========
 
-.. image:: https://circleci.com/gh/mapbox/rio-glui.svg?style=svg
-   :target: https://circleci.com/gh/mapbox/rio-glui
+.. image:: https://badge.fury.io/py/rio-glui.svg
+    :target: https://badge.fury.io/py/rio-glui
+
+.. image:: https://api.travis-ci.org/mapbox/rio-glui.png
+   :target: https://travis-ci.org/mapbox/rio-glui
 
 .. image:: https://codecov.io/gh/mapbox/rio-glui/branch/master/graph/badge.svg
  :target: https://codecov.io/gh/mapbox/rio-glui
@@ -68,7 +71,7 @@ The **--playground** option opens a *playground* template where you an interact 
 Creating CloudOptimized Geotiff
 ===============================
 
-To create rio-glui friendly files (CloudOptimized Geotiff) you can use another rasterio plugin: rio-cogeo (https://github.com/mapbox/rio-cogeo.git).
+To create rio-glui friendly files (CloudOptimized Geotiff) you can use another rasterio plugin: rio-cogeo (https://github.com/cogeotiff/rio-cogeo.git).
 
 
 Extras
@@ -87,7 +90,7 @@ Issues and pull requests are more than welcome.
 .. code-block:: console
 
   $ git clone https://github.com/mapbox/rio-glui.git
-  $ cd rio-cogeo
+  $ cd rio-glui
   $ pip install -e .[dev]
 
 *Python3.6 only*
