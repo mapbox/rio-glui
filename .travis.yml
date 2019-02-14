@@ -13,19 +13,15 @@ matrix:
     - python: 3.7
       env: TOXENV=py37
 
-python:
-  - "2.7"
-  - "3.6"
-  - "3.7"
 before_install:
   - python -m pip install -U pip
 install:
-  - pip install --user codecov pre-commit tox
+  - python -m pip install codecov pre-commit tox
 script:
-  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then ~/.local/bin/pre-commit run --all-files; fi
-  - ~/.local/bin/tox
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then pre-commit run --all-files; fi
+  - tox
 after_success:
-  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then ~/.local/bin/coverage xml; ~/.local/bin/codecov; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; thencoverage xml; codecov; fi
 deploy:
   on:
     repo: mapbox/rio-glui
