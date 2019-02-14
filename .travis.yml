@@ -21,7 +21,7 @@ script:
   - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then pre-commit run --all-files; fi
   - tox
 after_success:
-  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; thencoverage xml; codecov; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then coverage xml; codecov; fi
 deploy:
   on:
     repo: mapbox/rio-glui
