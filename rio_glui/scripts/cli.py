@@ -2,62 +2,76 @@
 
 import os
 import click
+import numpy
 
 from rio_glui.raster import RasterTiles
 from rio_glui import server
 
 
-class CustomType:
-    """Click CustomType."""
+class MbxTokenType(click.ParamType):
+    """Mapbox token type."""
 
-    class MbxTokenType(click.ParamType):
-        """Mapbox token type."""
+    name = "token"
 
-        name = "token"
+    def convert(self, value, param, ctx):
+        """Validate token."""
+        try:
+            if not value:
+                return ""
 
-        def convert(self, value, param, ctx):
-            """Validate token."""
-            try:
-                if not value:
-                    return ""
+            assert value.startswith("pk")
+            return value
 
-                assert value.startswith("pk")
-                return value
+        except (AttributeError, AssertionError):
+            raise click.ClickException(
+                "Mapbox access token must be public (pk). "
+                "Please sign up at https://www.mapbox.com/signup/ to get a public token. "
+                "If you already have an account, you can retreive your "
+                "token at https://www.mapbox.com/account/."
+            )
 
-            except (AttributeError, AssertionError):
-                raise click.ClickException(
-                    "Mapbox access token must be public (pk). "
-                    "Please sign up at https://www.mapbox.com/signup/ to get a public token. "
-                    "If you already have an account, you can retreive your "
-                    "token at https://www.mapbox.com/account/."
-                )
 
-    class BdxParamType(click.ParamType):
-        """Band inddex type."""
+class BdxParamType(click.ParamType):
+    """Band inddex type."""
 
-        name = "bidx"
+    name = "bidx"
 
-        def convert(self, value, param, ctx):
-            """Validate and parse band index."""
-            try:
-                bands = [int(x) for x in value.split(",")]
-                assert len(bands) in [1, 3]
-                assert all(b > 0 for b in bands)
-                return bands
+    def convert(self, value, param, ctx):
+        """Validate and parse band index."""
+        try:
+            bands = [int(x) for x in value.split(",")]
+            assert len(bands) in [1, 3]
+            assert all(b > 0 for b in bands)
+            return bands
 
-            except (ValueError, AttributeError, AssertionError):
-                raise click.ClickException(
-                    "bidx must be a string with 1 or 3 ints comma-separated, "
-                    "representing the band indexes for R,G,B"
-                )
+        except (ValueError, AttributeError, AssertionError):
+            raise click.ClickException(
+                "bidx must be a string with 1 or 3 ints comma-separated, "
+                "representing the band indexes for R,G,B"
+            )
 
-    mbxToken = MbxTokenType()
-    bidx = BdxParamType()
+
+class NodataParamType(click.ParamType):
+    """Nodata inddex type."""
+
+    name = "nodata"
+
+    def convert(self, value, param, ctx):
+        """Validate and parse band index."""
+        try:
+            if value.lower() == "nan":
+                return numpy.nan
+            elif value.lower() in ["nil", "none", "nada"]:
+                return None
+            else:
+                return float(value)
+        except (TypeError, ValueError):
+            raise click.ClickException("{} is not a valid nodata value.".format(value))
 
 
 @click.command()
 @click.argument("path", type=str)
-@click.option("--bidx", "-b", type=CustomType.bidx, help="Raster band index")
+@click.option("--bidx", "-b", type=BdxParamType(), help="Raster band index")
 @click.option(
     "--scale",
     type=int,
@@ -85,7 +99,10 @@ class CustomType:
     help="Dimension of images being served (default: 512)",
 )
 @click.option(
-    "--nodata", type=int, help="Force mask creation from a given nodata value"
+    "--nodata",
+    type=NodataParamType(),
+    metavar="NUMBER|nan",
+    help="Set nodata masking values for input dataset.",
 )
 @click.option(
     "--gl-tile-size",
@@ -96,7 +113,8 @@ class CustomType:
 @click.option("--playground", is_flag=True, help="Launch playground app")
 @click.option(
     "--mapbox-token",
-    type=CustomType.mbxToken,
+    type=MbxTokenType(),
+    metavar="TOKEN",
     default=lambda: os.environ.get("MAPBOX_ACCESS_TOKEN", ""),
     help="Pass Mapbox token",
 )

@@ -3,6 +3,7 @@
 import os
 import pytest
 
+import numpy
 from mock import patch
 
 from click.testing import CliRunner
@@ -14,6 +15,9 @@ raster_path = os.path.join(
 )
 
 raster_ndvi_path = os.path.join(os.path.dirname(__file__), "fixtures", "ndvi_cogeo.tif")
+raster_nodata_path = os.path.join(
+    os.path.dirname(__file__), "fixtures", "internal_nodata.tif"
+)
 
 
 @pytest.fixture(autouse=True)
@@ -215,6 +219,82 @@ def test_glui_invalidScaleNumber(launch, TileServer):
     runner = CliRunner()
     result = runner.invoke(
         glui, [raster_ndvi_path, "--scale", "-1", "1", "--scale", "0", "1"]
+    )
+    TileServer.assert_not_called()
+    launch.assert_not_called()
+    assert result.exception
+    assert result.exit_code == 1
+
+
+@patch("rio_glui.server.TileServer")
+@patch("click.launch")
+def test_glui_validNodata(launch, TileServer):
+    """Should work as expected."""
+    TileServer.return_value.get_template_url.return_value = (
+        "http://127.0.0.1:8080/index.html"
+    )
+    TileServer.return_value.start.return_value = True
+
+    launch.return_value = True
+
+    runner = CliRunner()
+    result = runner.invoke(
+        glui, [raster_nodata_path, "--bidx", "1", "--nodata", "-9999"]
+    )
+    TileServer.assert_called_once()
+    raster = TileServer.call_args[0][0]
+    assert raster.nodata == -9999
+    assert not result.exception
+    assert result.exit_code == 0
+
+
+@patch("rio_glui.server.TileServer")
+@patch("click.launch")
+def test_glui_validNodataNone(launch, TileServer):
+    """Should work as expected."""
+    TileServer.return_value.get_template_url.return_value = (
+        "http://127.0.0.1:8080/index.html"
+    )
+    TileServer.return_value.start.return_value = True
+
+    launch.return_value = True
+
+    runner = CliRunner()
+    result = runner.invoke(glui, [raster_path, "--bidx", "1", "--nodata", "None"])
+    TileServer.assert_called_once()
+    raster = TileServer.call_args[0][0]
+    assert not raster.nodata
+    assert not result.exception
+    assert result.exit_code == 0
+
+
+@patch("rio_glui.server.TileServer")
+@patch("click.launch")
+def test_glui_validNodataNan(launch, TileServer):
+    """Should work as expected."""
+    TileServer.return_value.get_template_url.return_value = (
+        "http://127.0.0.1:8080/index.html"
+    )
+    TileServer.return_value.start.return_value = True
+
+    launch.return_value = True
+
+    runner = CliRunner()
+    result = runner.invoke(glui, [raster_nodata_path, "--bidx", "1", "--nodata", "nan"])
+    TileServer.assert_called_once()
+    raster = TileServer.call_args[0][0]
+    assert not numpy.isfinite(raster.nodata)
+    assert not result.exception
+    assert result.exit_code == 0
+
+
+@patch("rio_glui.server.TileServer")
+@patch("click.launch")
+def test_glui_validBadNodata(launch, TileServer):
+    """Should work as expected."""
+    runner = CliRunner()
+    result = runner.invoke(
+        glui, [raster_nodata_path, "--bidx", "1", "--nodata", "jacques"]
     )
     TileServer.assert_not_called()
     launch.assert_not_called()

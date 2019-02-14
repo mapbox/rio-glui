@@ -49,8 +49,6 @@ class RasterTiles(object):
         """Initialize RasterTiles object."""
         self.path = src_path
         self.tiles_size = tiles_size
-        self.nodata = nodata
-
         with rasterio.open(src_path) as src:
             try:
                 assert src.driver == "GTiff"
@@ -67,6 +65,7 @@ class RasterTiles(object):
                 )
             )
             self.indexes = indexes if indexes is not None else src.indexes
+            self.nodata = nodata if nodata is not None else src.nodata
             self.crs = src.crs
             self.crs_bounds = src.bounds
             self.meta = src.meta
