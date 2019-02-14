@@ -28,7 +28,7 @@ after_success:
   - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then ~/.local/bin/coverage xml; ~/.local/bin/codecov; fi
 deploy:
   on:
-    repo: mapbox/rio-cogeo
+    repo: mapbox/rio-glui
     python: 3.6
     tags: true
   provider: pypi
