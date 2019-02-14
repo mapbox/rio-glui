@@ -14,6 +14,7 @@ raster_path = os.path.join(
 )
 
 raster_ndvi_path = os.path.join(os.path.dirname(__file__), "fixtures", "ndvi_cogeo.tif")
+raster_nodata_path = os.path.join(os.path.dirname(__file__), "fixtures", "internal_nodata.tif")
 
 
 @pytest.fixture(autouse=True)
@@ -220,3 +221,14 @@ def test_glui_invalidScaleNumber(launch, TileServer):
     launch.assert_not_called()
     assert result.exception
     assert result.exit_code == 1
+
+
+@patch("rio_glui.server.TileServer")
+@patch("click.launch")
+def test_glui_validNodata(launch, TileServer):
+    """Should work as expected."""
+    runner = CliRunner()
+    result = runner.invoke(glui, [raster_nodata_path, "--bidx", "1", "--nodata", "-9999"])
+    TileServer.assert_called_once()
+    assert not result.exception
+    assert result.exit_code == 0

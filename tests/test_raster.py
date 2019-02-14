@@ -11,6 +11,7 @@ raster_path = os.path.join(
 invalid_raster_path = os.path.join(
     os.path.dirname(__file__), "fixtures", "16-21560-29773_small.tif"
 )
+raster_nodata_path = os.path.join(os.path.dirname(__file__), "fixtures", "internal_nodata.tif")
 
 
 def test_meters_per_pixel_valid():
@@ -63,6 +64,13 @@ def test_rastertiles_valid_nodata_option():
     r = RasterTiles(raster_path, nodata=0)
     assert r.path == raster_path
     assert r.nodata == 0
+
+
+def test_rastertiles_valid_nodata():
+    """Should work as expected (create rastertiles object)."""
+    r = RasterTiles(raster_nodata_path)
+    assert r.path == raster_nodata_path
+    assert r.nodata == -9999
 
 
 def test_rastertiles_get_bounds():
