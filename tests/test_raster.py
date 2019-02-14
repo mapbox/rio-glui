@@ -11,7 +11,9 @@ raster_path = os.path.join(
 invalid_raster_path = os.path.join(
     os.path.dirname(__file__), "fixtures", "16-21560-29773_small.tif"
 )
-raster_nodata_path = os.path.join(os.path.dirname(__file__), "fixtures", "internal_nodata.tif")
+raster_nodata_path = os.path.join(
+    os.path.dirname(__file__), "fixtures", "internal_nodata.tif"
+)
 
 
 def test_meters_per_pixel_valid():
