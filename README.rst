@@ -80,7 +80,7 @@ Extras
 This plugin also enable raster visualisation in Jupyter Notebook using [`mapboxgl-jupyter`](https://github.com/mapbox/mapboxgl-jupyter)
 
 
-Contribution & Devellopement
+Contribution & Development
 ============================
 
 Issues and pull requests are more than welcome.
