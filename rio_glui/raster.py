@@ -61,7 +61,7 @@ class RasterTiles(object):
 
             self.bounds = list(
                 transform_bounds(
-                    *[src.crs, "epsg:4326"] + list(src.bounds), densify_pts=0
+                    *[src.crs, "epsg:4326"] + list(src.bounds), densify_pts=21
                 )
             )
             self.indexes = indexes if indexes is not None else src.indexes
