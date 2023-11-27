@@ -11,9 +11,7 @@ rio-glui
 .. image:: https://codecov.io/gh/mapbox/rio-glui/branch/master/graph/badge.svg
  :target: https://codecov.io/gh/mapbox/rio-glui
 
-Explore CloudOptimized geotiff on your browser using Mapbox GL JS.
-
-.. image:: http://i.giphy.com/3ohzdVQrl8uUc8I2dO.gif
+Explore and adjust Cloud-optimized geotiffs ([COGs](https://www.cogeo.org/)) in your browser using [rasterio](https://rasterio.readthedocs.io/en/stable/) and [Mapbox GL JS](https://docs.mapbox.com/mapbox-gl-js/guides/).
 
 Install
 =======
