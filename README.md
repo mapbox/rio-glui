@@ -54,7 +54,7 @@ Options:
 Example: explore COG hosted on aws
 
 ```sh
-rio glui https://oin-hotosm.s3.amazonaws.com/5ac626e091b5310010e0d482/0/5ac626e091b5310010e0d483.tif
+rio glui https://<s3 bucket name>.s3.amazonaws.com/<object path>.tif
 ```
 
 **Playground**
