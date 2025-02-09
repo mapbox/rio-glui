@@ -109,6 +109,7 @@ class NodataParamType(click.ParamType):
     type=int,
     help="mapbox-gl tileSize (default is the same as `tiles-dimensions`)",
 )
+@click.option("--host", type=str, default="127.0.0.1", help="Webserver host (default: 127.0.0.1)")
 @click.option("--port", type=int, default=8080, help="Webserver port (default: 8080)")
 @click.option("--playground", is_flag=True, help="Launch playground app")
 @click.option(
@@ -127,6 +128,7 @@ def glui(
     tiles_dimensions,
     nodata,
     gl_tile_size,
+    host,
     port,
     playground,
     mapbox_token,
@@ -145,6 +147,7 @@ def glui(
         gl_tiles_size=gl_tile_size,
         gl_tiles_minzoom=raster.get_min_zoom(),
         gl_tiles_maxzoom=raster.get_max_zoom(),
+        host=host,
         port=port,
     )
 
