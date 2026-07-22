@@ -18,7 +18,6 @@ from tornado.ioloop import IOLoop
 from tornado.httpserver import HTTPServer
 from tornado.concurrent import run_on_executor
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -67,18 +66,20 @@ class TileServer(object):
     """
 
     def __init__(
-        self,
-        raster,
-        scale=None,
-        colormap=None,
-        tiles_format="png",
-        gl_tiles_size=None,
-        gl_tiles_minzoom=0,
-        gl_tiles_maxzoom=22,
-        port=8080,
+            self,
+            raster,
+            scale=None,
+            colormap=None,
+            tiles_format="png",
+            gl_tiles_size=None,
+            gl_tiles_minzoom=0,
+            gl_tiles_maxzoom=22,
+            host="127.0.0.1",
+            port=8080,
     ):
         """Initialize Tornado app."""
         self.raster = raster
+        self.host = host
         self.port = port
         self.server = None
         self.tiles_format = tiles_format
@@ -114,17 +115,17 @@ class TileServer(object):
     def get_tiles_url(self):
         """Get tiles endpoint url."""
         tileformat = "jpg" if self.tiles_format == "jpeg" else self.tiles_format
-        return "http://127.0.0.1:{}/tiles/{{z}}/{{x}}/{{y}}.{}".format(
-            self.port, tileformat
+        return "http://{}:{}/tiles/{{z}}/{{x}}/{{y}}.{}".format(
+            self.host, self.port, tileformat
         )
 
     def get_template_url(self):
         """Get simple app template url."""
-        return "http://127.0.0.1:{}/index.html".format(self.port)
+        return "http://{}:{}/index.html".format(self.host, self.port)
 
     def get_playground_url(self):
         """Get playground app template url."""
-        return "http://127.0.0.1:{}/playground.html".format(self.port)
+        return "http://{}:{}/playground.html".format(self.host, self.port)
 
     def get_bounds(self):
         """Get RasterTiles bounds."""
@@ -275,7 +276,7 @@ class Template(web.RequestHandler):
     """
 
     def initialize(
-        self, tiles_url, tiles_bounds, gl_tiles_size, gl_tiles_minzoom, gl_tiles_maxzoom
+            self, tiles_url, tiles_bounds, gl_tiles_size, gl_tiles_minzoom, gl_tiles_maxzoom
     ):
         """Initialize template handler."""
         self.tiles_url = tiles_url
